@@ -182,50 +182,49 @@ const Home = () => {
           </div>
         ) : (
           <motion.div 
-            initial="offscreen"
-            whileInView="onscreen"
-            viewport={{ once: true, amount: 0.2 }}
-            className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8"
-          >
-            {posts.map((post, index) => (
-              <motion.div 
-                key={post._id}
-                variants={cardVariants}
-                custom={index}
-                className="card bg-base-100 shadow-xl hover:shadow-2xl transition-shadow duration-300 overflow-hidden"
-              >
-                <figure className="relative">
-                  <img 
-                    src={post.thumbnail || 'https://images.unsplash.com/photo-1521791136064-7986c2920216'} 
-                    alt={post.title} 
-                    className="h-56 w-full object-cover"
-                  />
-                  <div className="absolute top-4 right-4 badge badge-accent text-white">
-                    {post.category}
-                  </div>
-                </figure>
-                <div className="card-body">
-                  <h3 className="card-title text-xl">{post.title}</h3>
-                  <div className="flex items-center gap-2 text-gray-500">
-                    <FaCalendarAlt />
-                    <span>Deadline: {new Date(post.deadline).toLocaleDateString()}</span>
-                  </div>
-                  <div className="flex items-center gap-2 text-gray-500">
-                    <FaMapMarkerAlt />
-                    <span>{post.location || 'Various Locations'}</span>
-                  </div>
-                  <div className="card-actions justify-end mt-4">
-                    <Link 
-                      to={`/post/${post._id}`} 
-                      className="btn btn-primary btn-sm md:btn-md text-white"
-                    >
-                      View Details
-                    </Link>
-                  </div>
-                </div>
-              </motion.div>
-            ))}
-          </motion.div>
+  initial="offscreen"
+  whileInView="onscreen"
+  viewport={{ once: true, amount: 0.2 }}
+  className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6"
+>
+  {posts.map((post) => (
+    <motion.div 
+      key={post._id}
+      variants={cardVariants}
+      className="card bg-base-100 shadow-md rounded-lg"
+    >
+      <figure className="relative">
+        <img
+          src={post.thumbnail || 'https://via.placeholder.com/400x200?text=No+Image'}
+          alt={post.title}
+          className="h-48 w-full object-cover"
+          onError={(e) => {
+            e.target.src = 'https://via.placeholder.com/400x200?text=No+Image';
+          }}
+        />
+        <div className="absolute top-2 right-2 badge badge-primary text-white">
+          {post.category}
+        </div>
+      </figure>
+      <div className="card-body">
+        <h2 className="card-title text-lg">{post.title}</h2>
+        <p className="text-sm text-gray-500 line-clamp-2">{post.description}</p>
+        <div className="flex flex-wrap gap-2 mt-2">
+          <div className="badge badge-outline">🧑 {post.volunteersNeeded} needed</div>
+          <div className="badge badge-outline">
+            📅 {new Date(post.deadline).toLocaleDateString()}
+          </div>
+        </div>
+        <div className="card-actions justify-end mt-4">
+          <Link to={`/post/${post._id}`} className="btn btn-sm btn-primary">
+            View Details
+          </Link>
+        </div>
+      </div>
+    </motion.div>
+  ))}
+</motion.div>
+
         )}
 
         <motion.div

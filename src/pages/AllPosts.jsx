@@ -210,11 +210,11 @@ const AllPosts = () => {
                       </div>
                     </div>
                   </td>
-                  <td><span className="badge badge-ghost">{post.category}</span></td>
+                  <td><span className="badge badge-secondary">{post.category}</span></td>
                   <td>{post.volunteersNeeded}</td>
                   <td>{formatDate(post.deadline)}</td>
                   <td>
-                    <Link to={`/post/${post._id}`} className="btn btn-ghost btn-xs">
+                    <Link to={`/post/${post._id}`} className="btn btn-primary btn-xs">
                       Details
                     </Link>
                   </td>
