@@ -2,7 +2,7 @@
 # 🌍 VolunteerHub - Volunteer Management Platform
 
 **Live Site:** (https://volunteerhub2.netlify.app/)  
-**Client GitHub Repo:** [GitHub - Client](https://github.com/tazminur/volunter)  
+**Client GitHub Repo:** [GitHub - Client](https://github.com/tazminur12/volunter)  
 **Server GitHub Repo:** [GitHub - Server](https://github.com/tazminur12/volunteerhub-server)
 
 ---
