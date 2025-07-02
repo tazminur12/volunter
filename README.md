@@ -1,9 +1,9 @@
 
 # 🌍 VolunteerHub - Volunteer Management Platform
 
-**Live Site:** [https://volunteerhub-client.vercel.app](https://volunteerhub-client.vercel.app)  
-**Client GitHub Repo:** [GitHub - Client](https://github.com/yourusername/volunteerhub-client)  
-**Server GitHub Repo:** [GitHub - Server](https://github.com/yourusername/volunteerhub-server)
+**Live Site:** [https://volunteerhub-client.vercel.app](https://volunteerhub2.netlify.app/)  
+**Client GitHub Repo:** [GitHub - Client](https://github.com/tazminur/volunter)  
+**Server GitHub Repo:** [GitHub - Server](https://github.com/tazminur12/volunteerhub-server)
 
 ---
 
