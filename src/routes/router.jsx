@@ -10,6 +10,10 @@ import PostDetails from "../pages/PostDetails"; import BeVolunteer from "../page
 import ErrorPage from "../pages/ErrorPage";
 import PrivateRoute from "./PrivateRoute";
 import MyVolunteerRequests from "../pages/MyVolunteerRequests"; // If implemented
+import Contact from "../pages/Contact";
+import About from "../pages/About";
+import Blog from "../pages/Blog";
+import BlogDetails from "../pages/BlogDetails";
 
 const router = createBrowserRouter([
   {
@@ -21,7 +25,10 @@ const router = createBrowserRouter([
       { path: "login", element: <Login /> },
       { path: "register", element: <Register /> },
       { path: "all-posts", element: <AllPosts /> },
-
+      { path: "blog", element: <Blog /> },
+      { path: "blog/:id", element: <BlogDetails /> },
+      { path: "about", element: <About></About>},
+      { path: "contact", element: <Contact></Contact>},
       // ✅ Protected Routes
       {
         path: "add-post",

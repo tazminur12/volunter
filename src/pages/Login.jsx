@@ -1,6 +1,6 @@
 import React, { useContext, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { FaGoogle } from 'react-icons/fa';
+import { FaGoogle, FaEye, FaEyeSlash, FaHandsHelping } from 'react-icons/fa';
 import { motion } from 'framer-motion';
 import Swal from 'sweetalert2';
 import { AuthContext } from '../context/AuthProvider';
@@ -8,6 +8,7 @@ import { AuthContext } from '../context/AuthProvider';
 const Login = () => {
   const { login, googleLogin } = useContext(AuthContext);
   const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
   const [emailError, setEmailError] = useState('');
   const [passwordError, setPasswordError] = useState('');
 
@@ -43,23 +44,31 @@ const Login = () => {
     try {
       await login(email, password);
       await Swal.fire({
-        title: 'Success!',
-        text: 'Logged in successfully',
+        title: 'Welcome Back!',
+        text: 'Successfully logged in to your account',
         icon: 'success',
         showConfirmButton: false,
-        timer: 1500,
+        timer: 2000,
         background: '#1f2937',
-        color: '#fff'
+        color: '#fff',
+        customClass: {
+          popup: 'rounded-2xl',
+          title: 'text-2xl font-bold'
+        }
       });
       navigate(from, { replace: true });
     } catch (error) {
       Swal.fire({
-        title: 'Error!',
-        text: error.message || 'Login failed',
+        title: 'Login Failed',
+        text: error.message || 'Please check your credentials and try again',
         icon: 'error',
         confirmButtonColor: '#3b82f6',
         background: '#1f2937',
-        color: '#fff'
+        color: '#fff',
+        customClass: {
+          popup: 'rounded-2xl',
+          title: 'text-xl font-bold'
+        }
       });
     } finally {
       setLoading(false);
@@ -71,160 +80,260 @@ const Login = () => {
     try {
       await googleLogin();
       await Swal.fire({
-        title: 'Success!',
-        text: 'Google login successful',
+        title: 'Welcome!',
+        text: 'Successfully signed in with Google',
         icon: 'success',
         showConfirmButton: false,
-        timer: 1500,
+        timer: 2000,
         background: '#1f2937',
-        color: '#fff'
+        color: '#fff',
+        customClass: {
+          popup: 'rounded-2xl',
+          title: 'text-2xl font-bold'
+        }
       });
       navigate(from, { replace: true });
     } catch (error) {
       Swal.fire({
-        title: 'Error!',
-        text: error.message || 'Google login failed',
+        title: 'Google Sign-in Failed',
+        text: error.message || 'Please try again or use email login',
         icon: 'error',
         confirmButtonColor: '#3b82f6',
         background: '#1f2937',
-        color: '#fff'
+        color: '#fff',
+        customClass: {
+          popup: 'rounded-2xl',
+          title: 'text-xl font-bold'
+        }
       });
     } finally {
       setLoading(false);
     }
   };
 
+  const containerVariants = {
+    hidden: { opacity: 0 },
+    visible: {
+      opacity: 1,
+      transition: {
+        duration: 0.6,
+        staggerChildren: 0.1
+      }
+    }
+  };
+
+  const itemVariants = {
+    hidden: { y: 20, opacity: 0 },
+    visible: {
+      y: 0,
+      opacity: 1,
+      transition: {
+        duration: 0.5,
+        ease: "easeOut"
+      }
+    }
+  };
+
   return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      transition={{ duration: 0.5 }}
-      className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-gray-100 dark:from-gray-900 dark:to-gray-800 px-4"
-    >
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 flex items-center justify-center p-4">
+      {/* Background Pattern */}
+      <div className="absolute inset-0 overflow-hidden">
+        <div className="absolute -top-40 -right-40 w-80 h-80 bg-gradient-to-br from-blue-400/20 to-purple-400/20 rounded-full blur-3xl"></div>
+        <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-gradient-to-tr from-indigo-400/20 to-pink-400/20 rounded-full blur-3xl"></div>
+      </div>
+
       <motion.div
-        initial={{ y: -20, opacity: 0 }}
-        animate={{ y: 0, opacity: 1 }}
-        transition={{ delay: 0.2, duration: 0.5 }}
-        className="w-full max-w-md bg-white dark:bg-gray-800 rounded-xl shadow-xl overflow-hidden"
+        variants={containerVariants}
+        initial="hidden"
+        animate="visible"
+        className="relative w-full max-w-md z-10"
       >
-        <div className="bg-gradient-to-r from-blue-600 to-blue-400 dark:from-gray-900 dark:to-gray-700 p-6 text-center">
-          <h2 className="text-2xl font-bold text-white">Welcome Back</h2>
-          <p className="text-blue-100 dark:text-gray-300 mt-1">Sign in to access your account</p>
-        </div>
-
-        <div className="p-8">
-          <form onSubmit={handleLogin} className="space-y-5">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                Email Address
-              </label>
-              <input
-                type="email"
-                name="email"
-                required
-                placeholder="your@email.com"
-                className={`w-full px-4 py-3 rounded-lg border ${emailError ? 'border-red-500' : 'border-gray-300'} focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all dark:bg-gray-700 dark:border-gray-600 dark:text-white`}
-                onChange={() => setEmailError('')}
-              />
-              {emailError && (
-                <p className="mt-1 text-sm text-red-600 dark:text-red-400">{emailError}</p>
-              )}
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                Password
-              </label>
-              <input
-                type="password"
-                name="password"
-                required
-                placeholder="••••••••"
-                className={`w-full px-4 py-3 rounded-lg border ${passwordError ? 'border-red-500' : 'border-gray-300'} focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all dark:bg-gray-700 dark:border-gray-600 dark:text-white`}
-                onChange={() => setPasswordError('')}
-              />
-              {passwordError && (
-                <p className="mt-1 text-sm text-red-600 dark:text-red-400">{passwordError}</p>
-              )}
-            </div>
-
-            <div className="flex items-center justify-between">
-              <div className="flex items-center">
-                <input
-                  id="remember-me"
-                  name="remember-me"
-                  type="checkbox"
-                  className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded dark:bg-gray-700 dark:border-gray-600"
-                />
-                <label htmlFor="remember-me" className="ml-2 block text-sm text-gray-700 dark:text-gray-300">
-                  Remember me
-                </label>
-              </div>
-              <Link
-                to="/forgot-password"
-                className="text-sm text-blue-600 hover:text-blue-500 dark:text-blue-400 dark:hover:text-blue-300"
+        {/* Main Card */}
+        <motion.div
+          variants={itemVariants}
+          className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-xl rounded-3xl shadow-2xl border border-white/20 dark:border-gray-700/50 overflow-hidden"
+        >
+          {/* Header */}
+          <motion.div
+            variants={itemVariants}
+            className="relative bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 p-8 text-center overflow-hidden"
+          >
+            {/* Background Pattern */}
+            <div className="absolute inset-0 bg-gradient-to-r from-blue-600/50 to-purple-600/50"></div>
+            <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -translate-y-16 translate-x-16"></div>
+            <div className="absolute bottom-0 left-0 w-24 h-24 bg-white/10 rounded-full translate-y-12 -translate-x-12"></div>
+            
+            <div className="relative z-10">
+              <motion.div
+                initial={{ scale: 0 }}
+                animate={{ scale: 1 }}
+                transition={{ delay: 0.2, type: "spring", stiffness: 200 }}
+                className="inline-flex items-center justify-center w-16 h-16 bg-white/20 rounded-2xl mb-4"
               >
-                Forgot password?
-              </Link>
+                <FaHandsHelping className="text-3xl text-white" />
+              </motion.div>
+              <h1 className="text-3xl font-bold text-white mb-2">Welcome Back</h1>
+              <p className="text-blue-100 text-lg">Sign in to continue your journey</p>
             </div>
+          </motion.div>
 
-            <button
-              type="submit"
-              disabled={loading}
-              className={`w-full py-3 px-4 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-all focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:bg-blue-700 dark:hover:bg-blue-600 ${loading ? 'opacity-70 cursor-not-allowed' : ''}`}
-            >
-              {loading ? (
-                <span className="flex items-center justify-center">
-                  <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                  </svg>
-                  Signing in...
-                </span>
-              ) : (
-                'Sign In'
-              )}
-            </button>
-          </form>
+          {/* Form */}
+          <motion.div
+            variants={itemVariants}
+            className="p-8 space-y-6"
+          >
+            <form onSubmit={handleLogin} className="space-y-6">
+              {/* Email Field */}
+              <motion.div variants={itemVariants}>
+                <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                  Email Address
+                </label>
+                <div className="relative">
+                  <input
+                    type="email"
+                    name="email"
+                    required
+                    placeholder="Enter your email"
+                    className={`w-full px-4 py-4 rounded-xl border-2 transition-all duration-300 focus:ring-4 focus:ring-blue-500/20 dark:bg-gray-700/50 dark:border-gray-600 dark:text-white ${
+                      emailError 
+                        ? 'border-red-500 focus:border-red-500 focus:ring-red-500/20' 
+                        : 'border-gray-200 focus:border-blue-500'
+                    }`}
+                    onChange={() => setEmailError('')}
+                  />
+                  {emailError && (
+                    <motion.p
+                      initial={{ opacity: 0, y: -10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      className="mt-2 text-sm text-red-600 dark:text-red-400 flex items-center"
+                    >
+                      <span className="w-1 h-1 bg-red-500 rounded-full mr-2"></span>
+                      {emailError}
+                    </motion.p>
+                  )}
+                </div>
+              </motion.div>
 
-          <div className="mt-6">
-            <div className="relative">
+              {/* Password Field */}
+              <motion.div variants={itemVariants}>
+                <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                  Password
+                </label>
+                <div className="relative">
+                  <input
+                    type={showPassword ? "text" : "password"}
+                    name="password"
+                    required
+                    placeholder="Enter your password"
+                    className={`w-full px-4 py-4 pr-12 rounded-xl border-2 transition-all duration-300 focus:ring-4 focus:ring-blue-500/20 dark:bg-gray-700/50 dark:border-gray-600 dark:text-white ${
+                      passwordError 
+                        ? 'border-red-500 focus:border-red-500 focus:ring-red-500/20' 
+                        : 'border-gray-200 focus:border-blue-500'
+                    }`}
+                    onChange={() => setPasswordError('')}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+                  >
+                    {showPassword ? <FaEyeSlash size={20} /> : <FaEye size={20} />}
+                  </button>
+                  {passwordError && (
+                    <motion.p
+                      initial={{ opacity: 0, y: -10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      className="mt-2 text-sm text-red-600 dark:text-red-400 flex items-center"
+                    >
+                      <span className="w-1 h-1 bg-red-500 rounded-full mr-2"></span>
+                      {passwordError}
+                    </motion.p>
+                  )}
+                </div>
+              </motion.div>
+
+              {/* Remember Me & Forgot Password */}
+              <motion.div variants={itemVariants} className="flex items-center justify-between">
+                <label className="flex items-center cursor-pointer">
+                  <input
+                    type="checkbox"
+                    className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
+                  />
+                  <span className="ml-2 text-sm text-gray-600 dark:text-gray-400">Remember me</span>
+                </label>
+                <Link
+                  to="/forgot-password"
+                  className="text-sm text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 font-medium transition-colors"
+                >
+                  Forgot password?
+                </Link>
+              </motion.div>
+
+              {/* Login Button */}
+              <motion.button
+                variants={itemVariants}
+                type="submit"
+                disabled={loading}
+                className={`w-full py-4 px-6 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-semibold rounded-xl transition-all duration-300 transform hover:scale-[1.02] focus:outline-none focus:ring-4 focus:ring-blue-500/30 disabled:opacity-70 disabled:cursor-not-allowed disabled:transform-none shadow-lg hover:shadow-xl`}
+              >
+                {loading ? (
+                  <div className="flex items-center justify-center">
+                    <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-3"></div>
+                    Signing in...
+                  </div>
+                ) : (
+                  'Sign In'
+                )}
+              </motion.button>
+            </form>
+
+            {/* Divider */}
+            <motion.div variants={itemVariants} className="relative">
               <div className="absolute inset-0 flex items-center">
                 <div className="w-full border-t border-gray-300 dark:border-gray-600"></div>
               </div>
               <div className="relative flex justify-center text-sm">
-                <span className="px-2 bg-white dark:bg-gray-800 text-gray-500 dark:text-gray-400">
+                <span className="px-4 bg-white dark:bg-gray-800 text-gray-500 dark:text-gray-400 font-medium">
                   Or continue with
                 </span>
               </div>
-            </div>
+            </motion.div>
 
-            <div className="mt-6 grid grid-cols-1 gap-3">
-              <button
-                onClick={handleSocialLogin}
-                disabled={loading}
-                className={`w-full inline-flex justify-center items-center py-3 px-4 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-600 transition-all ${loading ? 'opacity-70 cursor-not-allowed' : ''}`}
-              >
-                <FaGoogle className="h-5 w-5 text-red-500" />
-                <span className="ml-3">Sign in with Google</span>
-              </button>
-            </div>
-          </div>
+            {/* Google Sign In */}
+            <motion.button
+              variants={itemVariants}
+              onClick={handleSocialLogin}
+              disabled={loading}
+              className={`w-full flex items-center justify-center py-4 px-6 bg-white dark:bg-gray-700 border-2 border-gray-200 dark:border-gray-600 text-gray-700 dark:text-gray-300 font-semibold rounded-xl transition-all duration-300 hover:bg-gray-50 dark:hover:bg-gray-600 hover:border-gray-300 dark:hover:border-gray-500 disabled:opacity-70 disabled:cursor-not-allowed shadow-md hover:shadow-lg`}
+            >
+              <FaGoogle className="text-red-500 mr-3" size={20} />
+              Sign in with Google
+            </motion.button>
 
-          <div className="mt-6 text-center">
-            <p className="text-sm text-gray-600 dark:text-gray-400">
-              Don't have an account?{' '}
-              <Link
-                to="/register"
-                className="font-medium text-blue-600 hover:text-blue-500 dark:text-blue-400 dark:hover:text-blue-300 transition-colors"
-              >
-                Sign up
-              </Link>
-            </p>
-          </div>
-        </div>
+            {/* Sign Up Link */}
+            <motion.div variants={itemVariants} className="text-center">
+              <p className="text-gray-600 dark:text-gray-400">
+                Don't have an account?{' '}
+                <Link
+                  to="/register"
+                  className="font-semibold text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 transition-colors"
+                >
+                  Create one now
+                </Link>
+              </p>
+            </motion.div>
+          </motion.div>
+        </motion.div>
+
+        {/* Footer */}
+        <motion.div
+          variants={itemVariants}
+          className="mt-8 text-center text-sm text-gray-500 dark:text-gray-400"
+        >
+          <p>By signing in, you agree to our Terms of Service and Privacy Policy</p>
+        </motion.div>
       </motion.div>
-    </motion.div>
+    </div>
   );
 };
 

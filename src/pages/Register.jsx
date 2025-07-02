@@ -1,6 +1,6 @@
 import React, { useContext, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { FaGoogle } from 'react-icons/fa';
+import { FaGoogle, FaEye, FaEyeSlash, FaHandsHelping, FaUser, FaCamera, FaEnvelope, FaLock } from 'react-icons/fa';
 import { motion } from 'framer-motion';
 import { AuthContext } from '../context/AuthProvider';
 import Swal from 'sweetalert2';
@@ -10,6 +10,9 @@ const Register = () => {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [passwordStrength, setPasswordStrength] = useState(0);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [confirmPassword, setConfirmPassword] = useState('');
   const { register, googleLogin } = useContext(AuthContext);
   const navigate = useNavigate();
 
@@ -40,6 +43,10 @@ const Register = () => {
       setLoading(false);
       return setError("Password must include at least one number");
     }
+    if (password !== confirmPassword) {
+      setLoading(false);
+      return setError("Passwords do not match");
+    }
 
     try {
       const result = await register(email, password);
@@ -49,13 +56,17 @@ const Register = () => {
       });
 
       await Swal.fire({
-        title: 'Success!',
-        text: 'Account created successfully',
+        title: 'Welcome!',
+        text: 'Your account has been created successfully',
         icon: 'success',
         showConfirmButton: false,
-        timer: 1500,
+        timer: 2000,
         background: '#1f2937',
-        color: '#fff'
+        color: '#fff',
+        customClass: {
+          popup: 'rounded-2xl',
+          title: 'text-2xl font-bold'
+        }
       });
       navigate('/');
     } catch (err) {
@@ -67,12 +78,16 @@ const Register = () => {
       }
       setError(errorMessage);
       Swal.fire({
-        title: 'Error!',
+        title: 'Registration Failed',
         text: errorMessage,
         icon: 'error',
         confirmButtonColor: '#3b82f6',
         background: '#1f2937',
-        color: '#fff'
+        color: '#fff',
+        customClass: {
+          popup: 'rounded-2xl',
+          title: 'text-xl font-bold'
+        }
       });
     } finally {
       setLoading(false);
@@ -84,24 +99,32 @@ const Register = () => {
     try {
       await googleLogin();
       await Swal.fire({
-        title: 'Success!',
-        text: 'Google registration successful',
+        title: 'Welcome!',
+        text: 'Successfully registered with Google',
         icon: 'success',
         showConfirmButton: false,
-        timer: 1500,
+        timer: 2000,
         background: '#1f2937',
-        color: '#fff'
+        color: '#fff',
+        customClass: {
+          popup: 'rounded-2xl',
+          title: 'text-2xl font-bold'
+        }
       });
       navigate('/');
     } catch (err) {
       setError(err.message);
       Swal.fire({
-        title: 'Error!',
-        text: err.message || 'Google registration failed',
+        title: 'Google Registration Failed',
+        text: err.message || 'Please try again or use email registration',
         icon: 'error',
         confirmButtonColor: '#3b82f6',
         background: '#1f2937',
-        color: '#fff'
+        color: '#fff',
+        customClass: {
+          popup: 'rounded-2xl',
+          title: 'text-xl font-bold'
+        }
       });
     } finally {
       setLoading(false);
@@ -120,163 +143,319 @@ const Register = () => {
 
   const getPasswordStrengthColor = () => {
     switch (passwordStrength) {
-      case 0: return 'bg-gray-200';
+      case 0: return 'bg-gray-300 dark:bg-gray-600';
       case 1: return 'bg-red-500';
-      case 2: return 'bg-yellow-500';
-      case 3: return 'bg-blue-500';
-      case 4: return 'bg-green-500';
-      case 5: return 'bg-green-600';
-      default: return 'bg-gray-200';
+      case 2: return 'bg-orange-500';
+      case 3: return 'bg-yellow-500';
+      case 4: return 'bg-blue-500';
+      case 5: return 'bg-green-500';
+      default: return 'bg-gray-300 dark:bg-gray-600';
+    }
+  };
+
+  const getPasswordStrengthText = () => {
+    switch (passwordStrength) {
+      case 0: return 'Enter password';
+      case 1: return 'Very Weak';
+      case 2: return 'Weak';
+      case 3: return 'Fair';
+      case 4: return 'Good';
+      case 5: return 'Strong';
+      default: return 'Enter password';
+    }
+  };
+
+  const containerVariants = {
+    hidden: { opacity: 0 },
+    visible: {
+      opacity: 1,
+      transition: {
+        duration: 0.6,
+        staggerChildren: 0.1
+      }
+    }
+  };
+
+  const itemVariants = {
+    hidden: { y: 20, opacity: 0 },
+    visible: {
+      y: 0,
+      opacity: 1,
+      transition: {
+        duration: 0.5,
+        ease: "easeOut"
+      }
     }
   };
 
   return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      transition={{ duration: 0.5 }}
-      className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-gray-100 dark:from-gray-900 dark:to-gray-800 px-4"
-    >
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 flex items-center justify-center p-4">
+      {/* Background Pattern */}
+      <div className="absolute inset-0 overflow-hidden">
+        <div className="absolute -top-40 -right-40 w-80 h-80 bg-gradient-to-br from-blue-400/20 to-purple-400/20 rounded-full blur-3xl"></div>
+        <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-gradient-to-tr from-indigo-400/20 to-pink-400/20 rounded-full blur-3xl"></div>
+      </div>
+
       <motion.div
-        initial={{ y: -20, opacity: 0 }}
-        animate={{ y: 0, opacity: 1 }}
-        transition={{ delay: 0.2, duration: 0.5 }}
-        className="w-full max-w-md bg-white dark:bg-gray-800 rounded-xl shadow-xl overflow-hidden"
+        variants={containerVariants}
+        initial="hidden"
+        animate="visible"
+        className="relative w-full max-w-md z-10"
       >
-        <div className="bg-gradient-to-r from-blue-600 to-blue-400 dark:from-gray-900 dark:to-gray-700 p-6 text-center">
-          <h2 className="text-2xl font-bold text-white">Create Your Account</h2>
-          <p className="text-blue-100 dark:text-gray-300 mt-1">Join our community today</p>
-        </div>
-
-        <div className="p-8">
-          <form onSubmit={handleRegister} className="space-y-5">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                Full Name
-              </label>
-              <input
-                type="text"
-                name="name"
-                required
-                placeholder="John Doe"
-                className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-              />
+        {/* Main Card */}
+        <motion.div
+          variants={itemVariants}
+          className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-xl rounded-3xl shadow-2xl border border-white/20 dark:border-gray-700/50 overflow-hidden"
+        >
+          {/* Header */}
+          <motion.div
+            variants={itemVariants}
+            className="relative bg-gradient-to-r from-green-600 via-emerald-600 to-teal-600 p-8 text-center overflow-hidden"
+          >
+            {/* Background Pattern */}
+            <div className="absolute inset-0 bg-gradient-to-r from-green-600/50 to-teal-600/50"></div>
+            <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -translate-y-16 translate-x-16"></div>
+            <div className="absolute bottom-0 left-0 w-24 h-24 bg-white/10 rounded-full translate-y-12 -translate-x-12"></div>
+            
+            <div className="relative z-10">
+              <motion.div
+                initial={{ scale: 0 }}
+                animate={{ scale: 1 }}
+                transition={{ delay: 0.2, type: "spring", stiffness: 200 }}
+                className="inline-flex items-center justify-center w-16 h-16 bg-white/20 rounded-2xl mb-4"
+              >
+                <FaHandsHelping className="text-3xl text-white" />
+              </motion.div>
+              <h1 className="text-3xl font-bold text-white mb-2">Join Our Community</h1>
+              <p className="text-green-100 text-lg">Create your account and start making a difference</p>
             </div>
+          </motion.div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                Profile Photo URL
-              </label>
-              <input
-                type="url"
-                name="photo"
-                required
-                placeholder="https://example.com/photo.jpg"
-                className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                Email Address
-              </label>
-              <input
-                type="email"
-                name="email"
-                required
-                placeholder="your@email.com"
-                className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                Password
-              </label>
-              <input
-                type="password"
-                name="password"
-                required
-                placeholder="••••••••"
-                className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-                onChange={(e) => checkPasswordStrength(e.target.value)}
-              />
-              <div className="mt-2">
-                <div className="w-full bg-gray-200 rounded-full h-2">
-                  <div
-                    className={`h-2 rounded-full ${getPasswordStrengthColor()}`}
-                    style={{ width: `${(passwordStrength / 5) * 100}%` }}
-                  ></div>
+          {/* Form */}
+          <motion.div
+            variants={itemVariants}
+            className="p-8 space-y-6"
+          >
+            <form onSubmit={handleRegister} className="space-y-6">
+              {/* Full Name Field */}
+              <motion.div variants={itemVariants}>
+                <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                  Full Name
+                </label>
+                <div className="relative">
+                  <FaUser className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
+                  <input
+                    type="text"
+                    name="name"
+                    required
+                    placeholder="Enter your full name"
+                    className="w-full pl-10 pr-4 py-4 rounded-xl border-2 border-gray-200 focus:border-green-500 focus:ring-4 focus:ring-green-500/20 transition-all duration-300 dark:bg-gray-700/50 dark:border-gray-600 dark:text-white"
+                  />
                 </div>
-                <p className="text-xs mt-1 text-gray-500 dark:text-gray-400">
-                  {passwordStrength < 3 ? 'Weak password' : passwordStrength < 5 ? 'Good password' : 'Strong password'}
-                </p>
-              </div>
-            </div>
+              </motion.div>
 
-            {error && (
-              <div className="p-3 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 rounded-lg text-sm">
-                {error}
-              </div>
-            )}
+              {/* Profile Photo URL Field */}
+              <motion.div variants={itemVariants}>
+                <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                  Profile Photo URL
+                </label>
+                <div className="relative">
+                  <FaCamera className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
+                  <input
+                    type="url"
+                    name="photo"
+                    required
+                    placeholder="https://example.com/photo.jpg"
+                    className="w-full pl-10 pr-4 py-4 rounded-xl border-2 border-gray-200 focus:border-green-500 focus:ring-4 focus:ring-green-500/20 transition-all duration-300 dark:bg-gray-700/50 dark:border-gray-600 dark:text-white"
+                  />
+                </div>
+              </motion.div>
 
-            <button
-              type="submit"
-              disabled={loading}
-              className={`w-full py-3 px-4 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-all focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:bg-blue-700 dark:hover:bg-blue-600 ${loading ? 'opacity-70 cursor-not-allowed' : ''}`}
-            >
-              {loading ? (
-                <span className="flex items-center justify-center">
-                  <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                  </svg>
-                  Creating account...
-                </span>
-              ) : (
-                'Create Account'
+              {/* Email Field */}
+              <motion.div variants={itemVariants}>
+                <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                  Email Address
+                </label>
+                <div className="relative">
+                  <FaEnvelope className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
+                  <input
+                    type="email"
+                    name="email"
+                    required
+                    placeholder="Enter your email"
+                    className="w-full pl-10 pr-4 py-4 rounded-xl border-2 border-gray-200 focus:border-green-500 focus:ring-4 focus:ring-green-500/20 transition-all duration-300 dark:bg-gray-700/50 dark:border-gray-600 dark:text-white"
+                  />
+                </div>
+              </motion.div>
+
+              {/* Password Field */}
+              <motion.div variants={itemVariants}>
+                <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                  Password
+                </label>
+                <div className="relative">
+                  <FaLock className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
+                  <input
+                    type={showPassword ? "text" : "password"}
+                    name="password"
+                    required
+                    placeholder="Create a strong password"
+                    className="w-full pl-10 pr-12 py-4 rounded-xl border-2 border-gray-200 focus:border-green-500 focus:ring-4 focus:ring-green-500/20 transition-all duration-300 dark:bg-gray-700/50 dark:border-gray-600 dark:text-white"
+                    onChange={(e) => checkPasswordStrength(e.target.value)}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+                  >
+                    {showPassword ? <FaEyeSlash size={20} /> : <FaEye size={20} />}
+                  </button>
+                </div>
+                
+                {/* Password Strength Indicator */}
+                <div className="mt-3">
+                  <div className="w-full bg-gray-200 dark:bg-gray-600 rounded-full h-2 overflow-hidden">
+                    <motion.div
+                      initial={{ width: 0 }}
+                      animate={{ width: `${(passwordStrength / 5) * 100}%` }}
+                      transition={{ duration: 0.3 }}
+                      className={`h-2 rounded-full ${getPasswordStrengthColor()}`}
+                    />
+                  </div>
+                  <p className="text-xs mt-2 text-gray-500 dark:text-gray-400 font-medium">
+                    {getPasswordStrengthText()}
+                  </p>
+                </div>
+              </motion.div>
+
+              {/* Confirm Password Field */}
+              <motion.div variants={itemVariants}>
+                <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                  Confirm Password
+                </label>
+                <div className="relative">
+                  <FaLock className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
+                  <input
+                    type={showConfirmPassword ? "text" : "password"}
+                    required
+                    placeholder="Confirm your password"
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    className={`w-full pl-10 pr-12 py-4 rounded-xl border-2 transition-all duration-300 dark:bg-gray-700/50 dark:text-white ${
+                      confirmPassword && passwordStrength > 0
+                        ? confirmPassword === document.querySelector('input[name="password"]')?.value
+                          ? 'border-green-500 focus:ring-green-500/20'
+                          : 'border-red-500 focus:ring-red-500/20'
+                        : 'border-gray-200 focus:border-green-500 focus:ring-green-500/20'
+                    } dark:border-gray-600`}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+                  >
+                    {showConfirmPassword ? <FaEyeSlash size={20} /> : <FaEye size={20} />}
+                  </button>
+                </div>
+                {confirmPassword && passwordStrength > 0 && (
+                  <motion.p
+                    initial={{ opacity: 0, y: -10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className={`mt-2 text-sm flex items-center ${
+                      confirmPassword === document.querySelector('input[name="password"]')?.value
+                        ? 'text-green-600 dark:text-green-400'
+                        : 'text-red-600 dark:text-red-400'
+                    }`}
+                  >
+                    <span className={`w-1 h-1 rounded-full mr-2 ${
+                      confirmPassword === document.querySelector('input[name="password"]')?.value
+                        ? 'bg-green-500'
+                        : 'bg-red-500'
+                    }`}></span>
+                    {confirmPassword === document.querySelector('input[name="password"]')?.value
+                      ? 'Passwords match'
+                      : 'Passwords do not match'
+                    }
+                  </motion.p>
+                )}
+              </motion.div>
+
+              {/* Error Display */}
+              {error && (
+                <motion.div
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-600 dark:text-red-400 rounded-xl text-sm font-medium"
+                >
+                  {error}
+                </motion.div>
               )}
-            </button>
-          </form>
 
-          <div className="mt-6">
-            <div className="relative">
+              {/* Register Button */}
+              <motion.button
+                variants={itemVariants}
+                type="submit"
+                disabled={loading}
+                className={`w-full py-4 px-6 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white font-semibold rounded-xl transition-all duration-300 transform hover:scale-[1.02] focus:outline-none focus:ring-4 focus:ring-green-500/30 disabled:opacity-70 disabled:cursor-not-allowed disabled:transform-none shadow-lg hover:shadow-xl`}
+              >
+                {loading ? (
+                  <div className="flex items-center justify-center">
+                    <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-3"></div>
+                    Creating account...
+                  </div>
+                ) : (
+                  'Create Account'
+                )}
+              </motion.button>
+            </form>
+
+            {/* Divider */}
+            <motion.div variants={itemVariants} className="relative">
               <div className="absolute inset-0 flex items-center">
                 <div className="w-full border-t border-gray-300 dark:border-gray-600"></div>
               </div>
               <div className="relative flex justify-center text-sm">
-                <span className="px-2 bg-white dark:bg-gray-800 text-gray-500 dark:text-gray-400">
+                <span className="px-4 bg-white dark:bg-gray-800 text-gray-500 dark:text-gray-400 font-medium">
                   Or register with
                 </span>
               </div>
-            </div>
+            </motion.div>
 
-            <div className="mt-6 grid grid-cols-1 gap-3">
-              <button
-                onClick={handleSocialRegister}
-                disabled={loading}
-                className={`w-full inline-flex justify-center items-center py-3 px-4 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-600 transition-all ${loading ? 'opacity-70 cursor-not-allowed' : ''}`}
-              >
-                <FaGoogle className="h-5 w-5 text-red-500" />
-                <span className="ml-3">Continue with Google</span>
-              </button>
-            </div>
-          </div>
+            {/* Google Sign Up */}
+            <motion.button
+              variants={itemVariants}
+              onClick={handleSocialRegister}
+              disabled={loading}
+              className={`w-full flex items-center justify-center py-4 px-6 bg-white dark:bg-gray-700 border-2 border-gray-200 dark:border-gray-600 text-gray-700 dark:text-gray-300 font-semibold rounded-xl transition-all duration-300 hover:bg-gray-50 dark:hover:bg-gray-600 hover:border-gray-300 dark:hover:border-gray-500 disabled:opacity-70 disabled:cursor-not-allowed shadow-md hover:shadow-lg`}
+            >
+              <FaGoogle className="text-red-500 mr-3" size={20} />
+              Continue with Google
+            </motion.button>
 
-          <div className="mt-6 text-center">
-            <p className="text-sm text-gray-600 dark:text-gray-400">
-              Already have an account?{' '}
-              <Link
-                to="/login"
-                className="font-medium text-blue-600 hover:text-blue-500 dark:text-blue-400 dark:hover:text-blue-300 transition-colors"
-              >
-                Sign in
-              </Link>
-            </p>
-          </div>
-        </div>
+            {/* Sign In Link */}
+            <motion.div variants={itemVariants} className="text-center">
+              <p className="text-gray-600 dark:text-gray-400">
+                Already have an account?{' '}
+                <Link
+                  to="/login"
+                  className="font-semibold text-green-600 hover:text-green-700 dark:text-green-400 dark:hover:text-green-300 transition-colors"
+                >
+                  Sign in here
+                </Link>
+              </p>
+            </motion.div>
+          </motion.div>
+        </motion.div>
+
+        {/* Footer */}
+        <motion.div
+          variants={itemVariants}
+          className="mt-8 text-center text-sm text-gray-500 dark:text-gray-400"
+        >
+          <p>By creating an account, you agree to our Terms of Service and Privacy Policy</p>
+        </motion.div>
       </motion.div>
-    </motion.div>
+    </div>
   );
 };
 

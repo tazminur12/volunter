@@ -1,362 +1,625 @@
-import React, { useContext, useEffect, useState } from 'react';
-import { useParams } from 'react-router-dom';
-import { AuthContext } from '../context/AuthProvider';
+import React from 'react';
+import { useParams, Link } from 'react-router-dom';
 import Swal from 'sweetalert2';
-import LoadingSpinner from '../components/LoadingSpinner';
 import { 
-  FaUserFriends, 
-  FaMapMarkerAlt, 
   FaCalendarAlt, 
-  FaClock,
+  FaMapMarkerAlt, 
+  FaUserFriends, 
+  FaClock, 
+  FaShareAlt, 
+  FaHeart, 
+  FaRegHeart, 
+  FaArrowLeft, 
+  FaFacebookF, 
+  FaTwitter, 
+  FaYoutube,
   FaUser,
   FaEnvelope,
-  FaLightbulb
+  FaPhone,
+  FaGlobe,
+  FaTag,
+  FaCheckCircle,
+  FaExclamationTriangle,
+  FaStar,
+  FaHandshake,
+  FaUsers,
+  FaBookmark,
+  FaBookmark as FaBookmarkOutline
 } from 'react-icons/fa';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
+import { format } from 'date-fns';
+import ErrorPage from './ErrorPage';
+import LoadingSpinner from '../components/LoadingSpinner';
 
 const PostDetails = () => {
-  const { id } = useParams();
-  const { user } = useContext(AuthContext);
-  const [post, setPost] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [suggestion, setSuggestion] = useState("");
-  const [isModalOpen, setIsModalOpen] = useState(false);
+    const { id } = useParams();
+    const [post, setPost] = React.useState(null);
+    const [loading, setLoading] = React.useState(true);
+    const [error, setError] = React.useState(null);
+    const [isLiked, setIsLiked] = React.useState(false);
+    const [isSaved, setIsSaved] = React.useState(false);
+    const [shareOpen, setShareOpen] = React.useState(false);
+    const [applying, setApplying] = React.useState(false);
+    const [hasApplied, setHasApplied] = React.useState(false);
 
-  const token = localStorage.getItem('token');
+    React.useEffect(() => {
+        const fetchPost = async () => {
+            try {
+                console.log('Fetching post with ID:', id);
+                const response = await fetch(`https://volunteerhub-server.vercel.app/posts/${id}`);
+                console.log('Response status:', response.status);
+                
+                if (!response.ok) {
+                    if (response.status === 404) {
+                        throw new Error('Post not found');
+                    } else {
+                        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                    }
+                }
+                
+                const data = await response.json();
+                console.log('Post data:', data);
+                setPost(data);
+            } catch (err) {
+                console.error('Error fetching post:', err);
+                setError(err.message);
+            } finally {
+                setLoading(false);
+            }
+        };
 
-  useEffect(() => {
-    const fetchPost = async () => {
-      try {
-        const res = await fetch(`https://volunteerhub-server.vercel.app/posts/${id}`);
-        const data = await res.json();
-        setPost(data);
-      } catch (error) {
-        console.error("Error fetching post:", error);
-      } finally {
-        setLoading(false);
-      }
+        fetchPost();
+    }, [id]);
+
+    const handleLike = () => {
+        setIsLiked(!isLiked);
+        // In a real app, you would also update the backend here
     };
-    fetchPost();
-  }, [id]);
 
-  const handleVolunteerRequest = async (e) => {
-    e.preventDefault();
-
-    const volunteerData = {
-      postId: post._id,
-      thumbnail: post.thumbnail,
-      title: post.title,
-      description: post.description,
-      category: post.category,
-      location: post.location,
-      volunteersNeeded: post.volunteersNeeded,
-      deadline: post.deadline,
-      organizerName: post.organizerName,
-      organizerEmail: post.organizerEmail,
-      volunteerName: user.displayName,
-      volunteerEmail: user.email,
-      suggestion,
-      status: "requested"
+    const handleSave = () => {
+        setIsSaved(!isSaved);
+        // In a real app, you would also update the backend here
     };
 
-    try {
-      const res = await fetch('https://volunteerhub-server.vercel.app/volunteer-requests', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify(volunteerData)
-      });
+    const handleShare = () => {
+        setShareOpen(!shareOpen);
+        // In a real app, implement actual sharing functionality
+    };
 
-      const result = await res.json();
+    const handleApply = async () => {
+        const token = localStorage.getItem('token');
+        if (!token) {
+            Swal.fire({
+                icon: 'warning',
+                title: 'Login Required',
+                text: 'Please login to apply for this opportunity',
+                confirmButtonText: 'Login Now',
+                showCancelButton: true,
+                cancelButtonText: 'Cancel'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    window.location.href = '/login';
+                }
+            });
+            return;
+        }
 
-      if (result.insertedId) {
-        await fetch(`https://volunteerhub-server.vercel.app/posts/${post._id}/decrease-volunteers`, {
-          method: 'PATCH',
-          headers: {
-            'Authorization': `Bearer ${token}`
-          }
-        });
+        setApplying(true);
+        try {
+            // Create volunteer request
+            const requestData = {
+                postId: post._id,
+                postTitle: post.title,
+                organizerEmail: post.organizerEmail,
+                organizerName: post.organizerName,
+                status: 'pending',
+                appliedAt: new Date().toISOString()
+            };
 
-        Swal.fire({
-          title: "Success!",
-          text: "Volunteer request submitted",
-          icon: "success",
-          confirmButtonColor: "#4f46e5",
-        });
-        setIsModalOpen(false);
-        setSuggestion("");
-        setPost(prev => ({
-          ...prev,
-          volunteersNeeded: prev.volunteersNeeded - 1
-        }));
-      } else {
-        Swal.fire({
-          title: "Error!",
-          text: "Request failed",
-          icon: "error",
-          confirmButtonColor: "#4f46e5",
-        });
-      }
-    } catch (error) {
-      Swal.fire({
-        title: "Error!",
-        text: error.message,
-        icon: "error",
-        confirmButtonColor: "#4f46e5",
-      });
+            const requestResponse = await fetch('https://volunteerhub-server.vercel.app/volunteer-requests', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify(requestData)
+            });
+
+            if (!requestResponse.ok) {
+                throw new Error('Failed to submit application');
+            }
+
+            // Decrease volunteer count
+            const decreaseResponse = await fetch(`https://volunteerhub-server.vercel.app/posts/${post._id}/decrease-volunteers`, {
+                method: 'PATCH',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                }
+            });
+
+            if (decreaseResponse.ok) {
+                setHasApplied(true);
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Application Submitted!',
+                    text: 'Your application has been submitted successfully. The organizer will review and contact you soon.',
+                    confirmButtonText: 'Great!'
+                });
+            } else {
+                // If decrease fails, still show success but with a note
+                setHasApplied(true);
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Application Submitted!',
+                    text: 'Your application has been submitted. Note: Volunteer count may be at maximum.',
+                    confirmButtonText: 'OK'
+                });
+            }
+        } catch (error) {
+            console.error('Apply error:', error);
+            Swal.fire({
+                icon: 'error',
+                title: 'Application Failed',
+                text: 'Failed to submit your application. Please try again.',
+                confirmButtonText: 'Try Again'
+            });
+        } finally {
+            setApplying(false);
+        }
+    };
+
+    const getDaysUntilDeadline = (deadline) => {
+        const today = new Date();
+        const deadlineDate = new Date(deadline);
+        const diffTime = deadlineDate - today;
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+        return diffDays;
+    };
+
+    if (loading) return <LoadingSpinner />;
+    if (error || !post) {
+        return (
+            <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 flex items-center justify-center">
+                <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-8 max-w-md mx-4 text-center">
+                    <div className="text-6xl mb-4">😕</div>
+                    <h3 className="text-xl font-bold text-gray-800 dark:text-white mb-2">
+                        {error === 'Post not found' ? 'Post Not Found' : 'Something went wrong'}
+                    </h3>
+                    <p className="text-gray-600 dark:text-gray-300 mb-6">
+                        {error === 'Post not found' 
+                            ? 'The volunteer opportunity you\'re looking for doesn\'t exist or has been removed.'
+                            : error || 'Failed to load the volunteer opportunity.'
+                        }
+                    </p>
+                    <div className="flex flex-col sm:flex-row gap-3 justify-center">
+                        <Link to="/all-posts" className="btn btn-primary">
+                            Browse Opportunities
+                        </Link>
+                        <button 
+                            onClick={() => window.location.reload()} 
+                            className="btn btn-outline"
+                        >
+                            Try Again
+                        </button>
+                    </div>
+                </div>
+            </div>
+        );
     }
-  };
 
-  if (loading) return <LoadingSpinner />;
-  if (!post) return (
-    <div className="min-h-[60vh] flex items-center justify-center">
-      <div className="text-center text-red-500 text-xl">Post not found</div>
-    </div>
-  );
+    const daysUntilDeadline = getDaysUntilDeadline(post.deadline);
 
-  return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      transition={{ duration: 0.3 }}
-      className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8"
-    >
-      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg overflow-hidden">
-        {/* Post Header with Image */}
-        {post.thumbnail && (
-          <div className="h-64 sm:h-80 w-full overflow-hidden">
-            <img
-              src={post.thumbnail}
-              alt={post.title}
-              className="w-full h-full object-cover"
-            />
-          </div>
-        )}
-
-        {/* Post Content */}
-        <div className="p-6 sm:p-8">
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
-            <motion.h2 
-              initial={{ y: 20, opacity: 0 }}
-              animate={{ y: 0, opacity: 1 }}
-              transition={{ delay: 0.1 }}
-              className="text-2xl sm:text-3xl font-bold text-gray-800 dark:text-white"
-            >
-              {post.title}
-            </motion.h2>
-            
-            <div className="bg-indigo-100 dark:bg-indigo-900 text-indigo-800 dark:text-indigo-200 px-4 py-2 rounded-full text-sm font-medium">
-              {post.category}
-            </div>
-          </div>
-
-          {/* Post Details */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-            <div className="space-y-4">
-              <div className="flex items-center text-gray-700 dark:text-gray-300">
-                <FaUserFriends className="text-indigo-500 dark:text-indigo-400 mr-3 text-lg" />
-                <span className="font-medium">Volunteers Needed:</span>
-                <span className="ml-2 font-semibold">{post.volunteersNeeded}</span>
-              </div>
-              
-              <div className="flex items-center text-gray-700 dark:text-gray-300">
-                <FaMapMarkerAlt className="text-indigo-500 dark:text-indigo-400 mr-3 text-lg" />
-                <span className="font-medium">Location:</span>
-                <span className="ml-2">{post.location}</span>
-              </div>
-            </div>
-            
-            <div className="space-y-4">
-              <div className="flex items-center text-gray-700 dark:text-gray-300">
-                <FaCalendarAlt className="text-indigo-500 dark:text-indigo-400 mr-3 text-lg" />
-                <span className="font-medium">Deadline:</span>
-                <span className="ml-2">{post.deadline?.slice(0, 10)}</span>
-              </div>
-              
-              <div className="flex items-center text-gray-700 dark:text-gray-300">
-                <FaClock className="text-indigo-500 dark:text-indigo-400 mr-3 text-lg" />
-                <span className="font-medium">Duration:</span>
-                <span className="ml-2">{post.duration || 'Flexible'}</span>
-              </div>
-            </div>
-          </div>
-
-          {/* Description */}
-          <div className="mb-8">
-            <h3 className="text-lg font-semibold text-gray-800 dark:text-white mb-3">About This Opportunity</h3>
-            <p className="text-gray-600 dark:text-gray-300 leading-relaxed">
-              {post.description}
-            </p>
-          </div>
-
-          {/* Organizer Info */}
-          <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-4 mb-8">
-            <h3 className="text-lg font-semibold text-gray-800 dark:text-white mb-3">Organizer Information</h3>
-            <div className="flex items-center space-x-4">
-              <div className="flex-shrink-0">
-                <div className="h-12 w-12 rounded-full bg-indigo-100 dark:bg-indigo-900 flex items-center justify-center text-indigo-600 dark:text-indigo-300">
-                  <FaUser className="text-xl" />
-                </div>
-              </div>
-              <div>
-                <h4 className="text-gray-800 dark:text-white font-medium">{post.organizerName}</h4>
-                <p className="text-gray-600 dark:text-gray-400 text-sm">{post.organizerEmail}</p>
-              </div>
-            </div>
-          </div>
-
-          {/* Volunteer Button */}
-          <div className="flex justify-center">
-            <button
-              disabled={post.volunteersNeeded === 0}
-              onClick={() => setIsModalOpen(true)}
-              className={`px-8 py-3 rounded-full font-medium text-lg transition-all duration-300 ${
-                post.volunteersNeeded === 0 
-                  ? 'bg-gray-300 dark:bg-gray-600 cursor-not-allowed text-gray-500 dark:text-gray-400'
-                  : 'bg-indigo-600 hover:bg-indigo-700 text-white shadow-lg hover:shadow-xl'
-              }`}
-            >
-              {post.volunteersNeeded === 0 ? 'No Volunteers Needed' : 'Become a Volunteer'}
-            </button>
-          </div>
-        </div>
-      </div>
-
-      {/* Volunteer Modal */}
-      <AnimatePresence>
-        {isModalOpen && (
-          <motion.div
-            className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            onClick={() => setIsModalOpen(false)}
-          >
+    return (
+        <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
             <motion.div
-              className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl w-full max-w-xl max-h-[90vh] overflow-y-auto"
-              initial={{ scale: 0.95, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.95, opacity: 0 }}
-              transition={{ type: "spring", damping: 25 }}
-              onClick={(e) => e.stopPropagation()}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ duration: 0.5 }}
+                className="max-w-7xl mx-auto px-4 py-8"
             >
-              <div className="p-6">
-                <div className="flex justify-between items-center mb-4">
-                  <h3 className="text-xl font-bold text-gray-800 dark:text-white">
-                    Volunteer for "{post.title}"
-                  </h3>
-                  <button
-                    onClick={() => setIsModalOpen(false)}
-                    className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
-                  >
-                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
-                    </svg>
-                  </button>
-                </div>
-
-                <form onSubmit={handleVolunteerRequest} className="space-y-4">
-                  {/* Post Information */}
-                  <div className="space-y-2">
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Opportunity Title</label>
-                    <input
-                      type="text"
-                      value={post.title}
-                      readOnly
-                      className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-700 text-gray-700 dark:text-gray-300"
-                    />
-                  </div>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Category</label>
-                      <input
-                        type="text"
-                        value={post.category}
-                        readOnly
-                        className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-700 text-gray-700 dark:text-gray-300"
-                      />
-                    </div>
-
-                    <div className="space-y-2">
-                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Location</label>
-                      <input
-                        type="text"
-                        value={post.location}
-                        readOnly
-                        className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-700 text-gray-700 dark:text-gray-300"
-                      />
-                    </div>
-                  </div>
-
-                  {/* Volunteer Information */}
-                  <div className="pt-4 border-t border-gray-200 dark:border-gray-700">
-                    <h4 className="text-lg font-medium text-gray-800 dark:text-white mb-4">Your Information</h4>
-                    
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 flex items-center">
-                          <FaUser className="mr-2 text-indigo-500 dark:text-indigo-400" /> Your Name
-                        </label>
-                        <input
-                          type="text"
-                          value={user?.displayName || ''}
-                          readOnly
-                          className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-700 text-gray-700 dark:text-gray-300"
-                        />
-                      </div>
-
-                      <div className="space-y-2">
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 flex items-center">
-                          <FaEnvelope className="mr-2 text-indigo-500 dark:text-indigo-400" /> Your Email
-                        </label>
-                        <input
-                          type="email"
-                          value={user?.email || ''}
-                          readOnly
-                          className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-700 text-gray-700 dark:text-gray-300"
-                        />
-                      </div>
-                    </div>
-
-                    <div className="space-y-2 mt-4">
-                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 flex items-center">
-                        <FaLightbulb className="mr-2 text-indigo-500 dark:text-indigo-400" /> Your Suggestions (Optional)
-                      </label>
-                      <textarea
-                        value={suggestion}
-                        onChange={(e) => setSuggestion(e.target.value)}
-                        placeholder="Share any ideas or questions you have for the organizer..."
-                        className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-700 text-gray-700 dark:text-gray-300 min-h-[100px]"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="flex justify-end space-x-3 pt-4">
-                    <button
-                      type="button"
-                      onClick={() => setIsModalOpen(false)}
-                      className="px-6 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                {/* Back Button */}
+                <motion.div
+                    initial={{ opacity: 0, x: -20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ duration: 0.6 }}
+                >
+                    <Link 
+                        to="/all-posts" 
+                        className="inline-flex items-center text-primary hover:text-primary-dark dark:text-primary dark:hover:text-primary-light mb-6 transition-colors group"
                     >
-                      Cancel
-                    </button>
-                    <button
-                      type="submit"
-                      className="px-6 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition-colors"
-                    >
-                      Submit Request
-                    </button>
-                  </div>
-                </form>
-              </div>
+                        <FaArrowLeft className="mr-2 group-hover:-translate-x-1 transition-transform" />
+                        <span className="font-medium">Back to all opportunities</span>
+                    </Link>
+                </motion.div>
+
+                {/* Main Content */}
+                <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.6, delay: 0.2 }}
+                    className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl overflow-hidden"
+                >
+                    {/* Post Header */}
+                    <div className="relative">
+                        <img 
+                            src={post.thumbnail || 'https://images.unsplash.com/photo-1521791136064-7986c2920216?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=2070&q=80'} 
+                            alt={post.title}
+                            className="w-full h-64 md:h-96 object-cover"
+                            onError={(e) => {
+                                e.target.src = 'https://images.unsplash.com/photo-1521791136064-7986c2920216?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=2070&q=80';
+                            }}
+                        />
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent"></div>
+                        
+                        {/* Status Badge */}
+                        <div className="absolute top-6 left-6">
+                            {daysUntilDeadline <= 7 && daysUntilDeadline > 0 ? (
+                                <span className="badge badge-error badge-lg gap-2">
+                                    <FaExclamationTriangle />
+                                    {daysUntilDeadline} days left
+                                </span>
+                            ) : daysUntilDeadline <= 0 ? (
+                                <span className="badge badge-warning badge-lg gap-2">
+                                    <FaClock />
+                                    Expired
+                                </span>
+                            ) : (
+                                <span className="badge badge-success badge-lg gap-2">
+                                    <FaCheckCircle />
+                                    Active
+                                </span>
+                            )}
+                        </div>
+
+                        {/* Category Badge */}
+                        <div className="absolute top-6 right-6">
+                            <span className="badge badge-primary badge-lg gap-2">
+                                <FaTag />
+                                {post.category}
+                            </span>
+                        </div>
+
+                        {/* Header Content */}
+                        <div className="absolute bottom-0 left-0 right-0 p-8">
+                            <div className="flex flex-col md:flex-row md:justify-between md:items-end">
+                                <div className="flex-1">
+                                    <h1 className="text-3xl md:text-5xl font-bold text-white mb-4 leading-tight">
+                                        {post.title}
+                                    </h1>
+                                    <div className="flex flex-wrap items-center gap-4 text-white/90">
+                                        <div className="flex items-center gap-2">
+                                            <FaMapMarkerAlt className="text-primary-light" />
+                                            <span className="font-medium">{post.location || 'Multiple locations'}</span>
+                                        </div>
+                                        <div className="flex items-center gap-2">
+                                            <FaUsers className="text-primary-light" />
+                                            <span className="font-medium">{post.volunteersNeeded} volunteers needed</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                {/* Action Buttons */}
+                                <div className="flex items-center gap-3 mt-4 md:mt-0">
+                                    <button 
+                                        onClick={handleLike}
+                                        className="btn btn-circle btn-outline btn-primary text-white border-white hover:bg-white hover:text-primary"
+                                        aria-label={isLiked ? 'Unlike post' : 'Like post'}
+                                    >
+                                        {isLiked ? <FaHeart className="text-red-500" /> : <FaRegHeart />}
+                                    </button>
+                                    <button 
+                                        onClick={handleSave}
+                                        className="btn btn-circle btn-outline btn-primary text-white border-white hover:bg-white hover:text-primary"
+                                        aria-label={isSaved ? 'Remove from saved' : 'Save post'}
+                                    >
+                                        {isSaved ? <FaBookmark className="text-yellow-500" /> : <FaBookmarkOutline />}
+                                    </button>
+                                    <div className="relative">
+                                        <button 
+                                            onClick={handleShare}
+                                            className="btn btn-circle btn-outline btn-primary text-white border-white hover:bg-white hover:text-primary"
+                                            aria-label="Share post"
+                                        >
+                                            <FaShareAlt />
+                                        </button>
+                                        {shareOpen && (
+                                            <motion.div
+                                                initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                                                animate={{ opacity: 1, y: 0, scale: 1 }}
+                                                className="absolute right-0 bottom-full mb-3 bg-white dark:bg-gray-700 rounded-xl shadow-2xl p-4 w-56 z-10"
+                                            >
+                                                <p className="text-sm font-medium mb-3 text-gray-800 dark:text-white">Share this opportunity:</p>
+                                                <div className="flex justify-center gap-4">
+                                                    <button className="btn btn-circle btn-sm bg-blue-600 hover:bg-blue-700 text-white">
+                                                        <FaFacebookF />
+                                                    </button>
+                                                    <button className="btn btn-circle btn-sm bg-blue-400 hover:bg-blue-500 text-white">
+                                                        <FaTwitter />
+                                                    </button>
+                                                    <button className="btn btn-circle btn-sm bg-red-600 hover:bg-red-700 text-white">
+                                                        <FaYoutube />
+                                                    </button>
+                                                </div>
+                                            </motion.div>
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Post Body */}
+                    <div className="p-6 md:p-8">
+                        {/* Quick Stats */}
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                            <div className="bg-gradient-to-r from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-800/20 rounded-xl p-4">
+                                <div className="flex items-center gap-3">
+                                    <div className="w-12 h-12 bg-blue-500 rounded-lg flex items-center justify-center">
+                                        <FaUsers className="text-white text-xl" />
+                                    </div>
+                                    <div>
+                                        <p className="text-sm text-gray-600 dark:text-gray-400">Volunteers Needed</p>
+                                        <p className="text-2xl font-bold text-gray-800 dark:text-white">{post.volunteersNeeded}</p>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div className="bg-gradient-to-r from-green-50 to-green-100 dark:from-green-900/20 dark:to-green-800/20 rounded-xl p-4">
+                                <div className="flex items-center gap-3">
+                                    <div className="w-12 h-12 bg-green-500 rounded-lg flex items-center justify-center">
+                                        <FaCalendarAlt className="text-white text-xl" />
+                                    </div>
+                                    <div>
+                                        <p className="text-sm text-gray-600 dark:text-gray-400">Application Deadline</p>
+                                        <p className="text-lg font-bold text-gray-800 dark:text-white">
+                                            {format(new Date(post.deadline), 'MMM dd, yyyy')}
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div className="bg-gradient-to-r from-purple-50 to-purple-100 dark:from-purple-900/20 dark:to-purple-800/20 rounded-xl p-4">
+                                <div className="flex items-center gap-3">
+                                    <div className="w-12 h-12 bg-purple-500 rounded-lg flex items-center justify-center">
+                                        <FaClock className="text-white text-xl" />
+                                    </div>
+                                    <div>
+                                        <p className="text-sm text-gray-600 dark:text-gray-400">Time Remaining</p>
+                                        <p className="text-lg font-bold text-gray-800 dark:text-white">
+                                            {daysUntilDeadline > 0 ? `${daysUntilDeadline} days` : 'Expired'}
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* About Section */}
+                        <div className="mb-8">
+                            <h2 className="text-2xl font-bold text-gray-800 dark:text-white mb-6 flex items-center gap-2">
+                                <FaHandshake className="text-primary" />
+                                About This Opportunity
+                            </h2>
+                            <div className="prose prose-lg max-w-none dark:prose-invert">
+                                <p className="text-gray-700 dark:text-gray-300 leading-relaxed text-lg">
+                                    {post.description}
+                                </p>
+                            </div>
+                        </div>
+
+                        {/* Responsibilities & Requirements */}
+                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+                            {post.responsibilities && (
+                                <div className="bg-gray-50 dark:bg-gray-700 rounded-xl p-6">
+                                    <h3 className="text-xl font-semibold text-gray-800 dark:text-white mb-4 flex items-center gap-2">
+                                        <FaCheckCircle className="text-green-500" />
+                                        Responsibilities
+                                    </h3>
+                                    <ul className="space-y-3">
+                                        {post.responsibilities.map((item, index) => (
+                                            <li key={index} className="flex items-start gap-3 text-gray-700 dark:text-gray-300">
+                                                <div className="w-2 h-2 bg-green-500 rounded-full mt-2 flex-shrink-0"></div>
+                                                <span>{item}</span>
+                                            </li>
+                                        ))}
+                                    </ul>
+                                </div>
+                            )}
+
+                            {post.requirements && (
+                                <div className="bg-gray-50 dark:bg-gray-700 rounded-xl p-6">
+                                    <h3 className="text-xl font-semibold text-gray-800 dark:text-white mb-4 flex items-center gap-2">
+                                        <FaStar className="text-yellow-500" />
+                                        Requirements
+                                    </h3>
+                                    <ul className="space-y-3">
+                                        {post.requirements.map((item, index) => (
+                                            <li key={index} className="flex items-start gap-3 text-gray-700 dark:text-gray-300">
+                                                <div className="w-2 h-2 bg-yellow-500 rounded-full mt-2 flex-shrink-0"></div>
+                                                <span>{item}</span>
+                                            </li>
+                                        ))}
+                                    </ul>
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Organization Details */}
+                        <div className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 rounded-xl p-6 mb-8">
+                            <h3 className="text-xl font-semibold text-gray-800 dark:text-white mb-4 flex items-center gap-2">
+                                <FaUser className="text-primary" />
+                                Organization Details
+                            </h3>
+                            <div className="flex items-start gap-6">
+                                <div className="flex-shrink-0">
+                                    <div className="w-20 h-20 rounded-full bg-gradient-to-r from-primary to-secondary flex items-center justify-center text-white text-2xl font-bold">
+                                        {post.organizerName?.charAt(0) || 'O'}
+                                    </div>
+                                </div>
+                                <div className="flex-1">
+                                    <h4 className="text-lg font-semibold text-gray-800 dark:text-white mb-2">
+                                        {post.organizerName || 'Community Organization'}
+                                    </h4>
+                                    <div className="space-y-2 text-gray-600 dark:text-gray-300">
+                                        <div className="flex items-center gap-2">
+                                            <FaEnvelope className="text-primary" />
+                                            <span>{post.organizerEmail}</span>
+                                        </div>
+                                        {post.organizerPhone && (
+                                            <div className="flex items-center gap-2">
+                                                <FaPhone className="text-primary" />
+                                                <span>{post.organizerPhone}</span>
+                                            </div>
+                                        )}
+                                        {post.organizerWebsite && (
+                                            <div className="flex items-center gap-2">
+                                                <FaGlobe className="text-primary" />
+                                                <a href={post.organizerWebsite} className="text-primary hover:underline">
+                                                    Visit Website
+                                                </a>
+                                            </div>
+                                        )}
+                                    </div>
+                                    {post.organizerBio && (
+                                        <p className="text-gray-600 dark:text-gray-300 mt-4 leading-relaxed">
+                                            {post.organizerBio}
+                                        </p>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Footer Actions */}
+                        <div className="flex flex-col sm:flex-row justify-between items-center border-t border-gray-200 dark:border-gray-700 pt-6">
+                            <div className="mb-4 sm:mb-0">
+                                <p className="text-gray-600 dark:text-gray-400 text-sm">
+                                    Posted on {format(new Date(post.createdAt), 'MMMM dd, yyyy')}
+                                </p>
+                                <p className="text-gray-500 dark:text-gray-500 text-xs">
+                                    Opportunity ID: {post._id}
+                                </p>
+                            </div>
+                            <div className="flex flex-col sm:flex-row gap-3">
+                                <button 
+                                    className="btn btn-outline btn-primary gap-2"
+                                    onClick={handleSave}
+                                >
+                                    {isSaved ? <FaBookmark /> : <FaBookmarkOutline />}
+                                    {isSaved ? 'Saved' : 'Save for Later'}
+                                </button>
+                                <button 
+                                    className={`btn btn-lg gap-2 ${hasApplied ? 'btn-success' : 'btn-primary'}`}
+                                    onClick={handleApply}
+                                    disabled={applying || hasApplied}
+                                >
+                                    {applying ? (
+                                        <>
+                                            <span className="loading loading-spinner loading-sm"></span>
+                                            Applying...
+                                        </>
+                                    ) : hasApplied ? (
+                                        <>
+                                            <FaCheckCircle />
+                                            Applied
+                                        </>
+                                    ) : (
+                                        <>
+                                            <FaHandshake />
+                                            Apply Now
+                                        </>
+                                    )}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </motion.div>
+
+                {/* Related Posts Section */}
+                <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.6, delay: 0.4 }}
+                    className="mt-16"
+                >
+                    <h2 className="text-3xl font-bold text-gray-800 dark:text-white mb-8 flex items-center gap-2">
+                        <FaStar className="text-primary" />
+                        Similar Volunteer Opportunities
+                    </h2>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                        {/* In a real app, you would map through related posts here */}
+                        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg overflow-hidden hover:shadow-xl transition-shadow">
+                            <img 
+                                src="https://images.unsplash.com/photo-1549923746-c502d488b3ea?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=2070&q=80" 
+                                alt="Related volunteer opportunity"
+                                className="w-full h-48 object-cover"
+                            />
+                            <div className="p-6">
+                                <div className="flex items-center gap-2 mb-3">
+                                    <span className="badge badge-primary badge-sm">Healthcare</span>
+                                    <span className="text-sm text-gray-500 dark:text-gray-400">Jun 15, 2023</span>
+                                </div>
+                                <h3 className="font-semibold text-lg text-gray-800 dark:text-white mb-3">
+                                    Community Food Drive
+                                </h3>
+                                <p className="text-gray-600 dark:text-gray-300 text-sm mb-4 line-clamp-2">
+                                    Help distribute food to families in need during the holiday season.
+                                </p>
+                                <button className="btn btn-outline btn-primary w-full">
+                                    View Details
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg overflow-hidden hover:shadow-xl transition-shadow">
+                            <img 
+                                src="https://images.unsplash.com/photo-1531206715517-5c0ba140b2b8?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=2070&q=80" 
+                                alt="Related volunteer opportunity"
+                                className="w-full h-48 object-cover"
+                            />
+                            <div className="p-6">
+                                <div className="flex items-center gap-2 mb-3">
+                                    <span className="badge badge-secondary badge-sm">Education</span>
+                                    <span className="text-sm text-gray-500 dark:text-gray-400">Jun 20, 2023</span>
+                                </div>
+                                <h3 className="font-semibold text-lg text-gray-800 dark:text-white mb-3">
+                                    Youth Mentoring Program
+                                </h3>
+                                <p className="text-gray-600 dark:text-gray-300 text-sm mb-4 line-clamp-2">
+                                    Mentor young students and help them achieve their academic goals.
+                                </p>
+                                <button className="btn btn-outline btn-primary w-full">
+                                    View Details
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg overflow-hidden hover:shadow-xl transition-shadow">
+                            <img 
+                                src="https://images.unsplash.com/photo-1521791136064-7986c2920216?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=2070&q=80" 
+                                alt="Related volunteer opportunity"
+                                className="w-full h-48 object-cover"
+                            />
+                            <div className="p-6">
+                                <div className="flex items-center gap-2 mb-3">
+                                    <span className="badge badge-accent badge-sm">Environment</span>
+                                    <span className="text-sm text-gray-500 dark:text-gray-400">Jun 25, 2023</span>
+                                </div>
+                                <h3 className="font-semibold text-lg text-gray-800 dark:text-white mb-3">
+                                    Beach Cleanup Initiative
+                                </h3>
+                                <p className="text-gray-600 dark:text-gray-300 text-sm mb-4 line-clamp-2">
+                                    Join us in cleaning up our local beaches and protecting marine life.
+                                </p>
+                                <button className="btn btn-outline btn-primary w-full">
+                                    View Details
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </motion.div>
             </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </motion.div>
-  );
+        </div>
+    );
 };
 
 export default PostDetails;
