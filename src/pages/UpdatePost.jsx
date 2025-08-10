@@ -2,12 +2,14 @@ import React, { useEffect, useState, useContext } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import Swal from 'sweetalert2';
 import { AuthContext } from '../context/AuthProvider';
-import Spinner from '../components/Spinner'; // Assuming you have a Spinner component
+import LoadingSpinner from '../components/LoadingSpinner';
+import useAxiosSecure from '../hooks/useAxiosSecure';
 
 const UpdatePost = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const { user, loading: authLoading } = useContext(AuthContext);
+  const axiosSecure = useAxiosSecure();
   const [post, setPost] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -29,17 +31,12 @@ const UpdatePost = () => {
           return;
         }
 
-        const res = await fetch(`${process.env.REACT_APP_API_URL}/posts/${id}`, {
-          headers: {
-            Authorization: `Bearer ${token}`
-          }
-        });
-
-        if (!res.ok) {
+        const res = await axiosSecure.get(`/posts/${id}`);
+        if (res.status !== 200) {
           throw new Error(res.status === 404 ? 'Post not found' : 'Failed to fetch post');
         }
 
-        const data = await res.json();
+        const data = res.data;
         const postData = data.data || data;
 
         // Verify the post belongs to the current user
@@ -51,7 +48,7 @@ const UpdatePost = () => {
       } catch (err) {
         setError(err.message);
         Swal.fire('Error', err.message, 'error');
-        navigate('/manage-posts');
+        navigate('/dashboard/manage-posts');
       } finally {
         setLoading(false);
       }
@@ -85,28 +82,20 @@ const UpdatePost = () => {
         return;
       }
 
-      const res = await fetch(`${process.env.REACT_APP_API_URL}/posts/${id}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`
-        },
-        body: JSON.stringify(updatedPost),
-      });
-
-      if (!res.ok) {
+      const res = await axiosSecure.put(`/posts/${id}`, updatedPost);
+      if (res.status !== 200) {
         throw new Error('Update failed');
       }
 
       Swal.fire('Updated!', 'Your post has been updated.', 'success');
-      navigate('/manage-posts');
+      navigate('/dashboard/manage-posts');
     } catch (err) {
       console.error('Update error:', err);
       Swal.fire('Error!', err.message || 'Something went wrong.', 'error');
     }
   };
 
-  if (authLoading || loading) return <Spinner />;
+  if (authLoading || loading) return <LoadingSpinner />;
   if (error) return <p className="text-red-500 text-center py-10">{error}</p>;
   if (!post) return <p className="text-red-500 text-center py-10">Post not found.</p>;
 

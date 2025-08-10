@@ -3,6 +3,8 @@ import { useParams, useNavigate } from 'react-router-dom';
 import Swal from 'sweetalert2';
 import { AuthContext } from '../context/AuthProvider';
 import LoadingSpinner from '../components/LoadingSpinner';
+import useAxios from '../hooks/useAxios';
+import useAxiosSecure from '../hooks/useAxiosSecure';
 
 const BeVolunteer = () => {
   const { id } = useParams();
@@ -11,12 +13,13 @@ const BeVolunteer = () => {
   const [post, setPost] = useState(null);
   const [loading, setLoading] = useState(true);
   const [suggestion, setSuggestion] = useState("");
+  const axiosPublic = useAxios();
+  const axiosSecure = useAxiosSecure();
 
   useEffect(() => {
     const fetchPost = async () => {
       try {
-        const res = await fetch(`https://volunteerhub-server.vercel.app/posts/${id}`);
-        const data = await res.json();
+        const { data } = await axiosPublic.get(`/posts/${id}`);
         setPost(data);
       } catch (error) {
         console.error("Error fetching post:", error);
@@ -25,7 +28,7 @@ const BeVolunteer = () => {
       }
     };
     fetchPost();
-  }, [id]);
+  }, [id, axiosPublic]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -48,29 +51,13 @@ const BeVolunteer = () => {
     };
 
     try {
-      const token = localStorage.getItem("token");
+      const { data: result } = await axiosSecure.post("/volunteer-requests", volunteerData);
 
-      const res = await fetch("https://volunteerhub-server.vercel.app/volunteer-requests", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`
-        },
-        body: JSON.stringify(volunteerData)
-      });
-
-      const result = await res.json();
-
-      if (result.insertedId) {
-        await fetch(`https://volunteerhub-server.vercel.app/posts/${post._id}/decrease-volunteers`, {
-          method: "PATCH",
-          headers: {
-            Authorization: `Bearer ${token}`
-          }
-        });
+      if (result.insertedId || result.success) {
+        await axiosSecure.patch(`/posts/${post._id}/decrease-volunteers`);
 
         Swal.fire("Success", "Volunteer request submitted", "success");
-        navigate("/manage-posts");
+        navigate("/dashboard/manage-posts");
       } else {
         Swal.fire("Failed", "Could not submit request", "error");
       }

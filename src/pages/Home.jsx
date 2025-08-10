@@ -1,3 +1,4 @@
+/* eslint-disable no-unused-vars */
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
@@ -17,7 +18,7 @@ const Home = () => {
   const [email, setEmail] = useState('');
 
   useEffect(() => {
-    fetch('https://volunteerhub-server.vercel.app/posts?sort=deadline&limit=8')
+    fetch('http://localhost:3000/posts?sort=deadline&limit=8')
       .then(res => res.json())
       .then(data => {
         setPosts(data);
@@ -198,7 +199,7 @@ const Home = () => {
                 </p>
                 <div className="flex flex-wrap gap-4">
                   <Link
-                    to="/add-post"
+                    to="/dashboard/add-post"
                     className="btn btn-primary text-white px-8 py-4 rounded-full shadow-lg hover:shadow-xl transition-all transform hover:-translate-y-1"
                   >
                     Post a Need

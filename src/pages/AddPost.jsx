@@ -4,7 +4,9 @@ import { useNavigate } from 'react-router-dom';
 import { AuthContext } from '../context/AuthProvider';
 import DatePicker from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
+/* eslint-disable no-unused-vars */
 import { motion } from 'framer-motion';
+import useAxiosSecure from '../hooks/useAxiosSecure';
 import { 
   FaUpload, 
   FaImage, 
@@ -21,6 +23,7 @@ import {
 
 const AddPost = () => {
   const { user } = useContext(AuthContext);
+  const axiosSecure = useAxiosSecure();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [imageLoading, setImageLoading] = useState(false);
@@ -53,7 +56,7 @@ const AddPost = () => {
 
     try {
       // You can replace this with your actual ImgBB API key
-      const apiKey = import.meta.env.VITE_IMGBB_API_KEY || 'your_imgbb_api_key_here';
+      const apiKey = import.meta.env.VITE_IMGBB_API_KEY;
       
       const response = await fetch(`https://api.imgbb.com/1/upload?key=${apiKey}`, {
         method: 'POST',
@@ -127,17 +130,8 @@ const AddPost = () => {
     };
 
     try {
-      const res = await fetch('https://volunteerhub-server.vercel.app/posts', {
-        method: 'POST',
-        headers: { 
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}` 
-        },
-        body: JSON.stringify(newPost),
-      });
-
-      const data = await res.json();
-      if (res.ok) {
+      const { data } = await axiosSecure.post('/posts', newPost);
+      if (data?.insertedId || data?._id || data?.success) {
         Swal.fire({
           position: 'top-end',
           icon: 'success',
@@ -146,9 +140,9 @@ const AddPost = () => {
           showConfirmButton: false,
           timer: 2000
         });
-        navigate('/manage-posts');
+        navigate('/dashboard/manage-posts');
       } else {
-        throw new Error(data.message || 'Failed to create post');
+        throw new Error(data?.message || 'Failed to create post');
       }
     } catch (err) {
       Swal.fire({

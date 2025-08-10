@@ -25,7 +25,7 @@ const MyVolunteerRequests = ({ user }) => {
         const fetchRequests = async () => {
             try {
                 setLoading(true);
-                const res = await axios.get('https://volunteerhub-server.vercel.app/volunteer-requests', {
+                const res = await axios.get('http://localhost:3000/volunteer-requests', {
                     params: { volunteerEmail: user.email },
                     headers: {
                         Authorization: `Bearer ${localStorage.getItem('token')}`
@@ -44,7 +44,7 @@ const MyVolunteerRequests = ({ user }) => {
     const handleCancel = async (id) => {
         try {
             setCancellingId(id);
-            await axios.delete(`https://volunteerhub-server.vercel.app/volunteer-requests/${id}`, {
+            await axios.delete(`http://localhost:3000/volunteer-requests/${id}`, {
                 headers: {
                     Authorization: `Bearer ${localStorage.getItem('token')}`
                 }

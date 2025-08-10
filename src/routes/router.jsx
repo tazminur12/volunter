@@ -1,11 +1,15 @@
 import { createBrowserRouter } from "react-router-dom";
 import MainLayout from "../layouts/MainLayout";
+import DashboardLayout from "../layouts/DashboardLayout";
 import Home from "../pages/Home";
 import Login from "../pages/Login";
 import Register from "../pages/Register";
 import AllPosts from "../pages/AllPosts";
 import AddPost from "../pages/AddPost";
 import ManagePosts from "../pages/ManagePosts";
+import DashboardOverview from "../pages/Dashboard/DashboardOverview";
+import Profile from "../pages/Profile";
+// Dashboard components - simplified structure
 import PostDetails from "../pages/PostDetails"; import BeVolunteer from "../pages/BeVolunteer"; // If implemented
 import ErrorPage from "../pages/ErrorPage";
 import PrivateRoute from "./PrivateRoute";
@@ -29,7 +33,7 @@ const router = createBrowserRouter([
       { path: "blog/:id", element: <BlogDetails /> },
       { path: "about", element: <About></About>},
       { path: "contact", element: <Contact></Contact>},
-      // ✅ Protected Routes
+      // ✅ Protected Routes (legacy direct paths)
       {
         path: "add-post",
         element: (
@@ -77,8 +81,23 @@ const router = createBrowserRouter([
             <MyVolunteerRequests />
           </PrivateRoute>
         ),
-      }
-      
+      },
+    ],
+  },
+  // ✅ Standalone Dashboard layout (no Navbar/Footer) - All users have same access
+  {
+    path: "/dashboard",
+    element: (
+      <PrivateRoute>
+        <DashboardLayout />
+      </PrivateRoute>
+    ),
+    children: [
+      { index: true, element: <DashboardOverview /> },
+      { path: "profile", element: <Profile /> },
+      { path: "add-post", element: <AddPost /> },
+      { path: "my-posts", element: <ManagePosts /> },
+      // Simplified dashboard - no role-based sections
     ],
   },
 ]);

@@ -15,9 +15,56 @@ export const AuthContext = createContext(null);
 
 const googleProvider = new GoogleAuthProvider();
 
+// Role storage utilities
+const ROLE_STORAGE_KEY = 'volunteer_app_role';
+const ROLE_TIMESTAMP_KEY = 'volunteer_app_role_timestamp';
+const ROLE_REFRESH_THRESHOLD = 30 * 60 * 1000; // 30 minutes in milliseconds
+
+const getStoredRole = () => {
+  try {
+    const roleData = localStorage.getItem(ROLE_STORAGE_KEY);
+    const timestamp = localStorage.getItem(ROLE_TIMESTAMP_KEY);
+    
+    if (!roleData || !timestamp) return null;
+    
+    const age = Date.now() - parseInt(timestamp);
+    if (age > ROLE_REFRESH_THRESHOLD) {
+      // Role is too old, remove it
+      localStorage.removeItem(ROLE_STORAGE_KEY);
+      localStorage.removeItem(ROLE_TIMESTAMP_KEY);
+      return null;
+    }
+    
+    return roleData;
+  } catch (error) {
+    console.error('Error reading stored role:', error);
+    return null;
+  }
+};
+
+const setStoredRole = (role) => {
+  try {
+    localStorage.setItem(ROLE_STORAGE_KEY, role);
+    localStorage.setItem(ROLE_TIMESTAMP_KEY, Date.now().toString());
+  } catch (error) {
+    console.error('Error storing role:', error);
+  }
+};
+
+const clearStoredRole = () => {
+  try {
+    localStorage.removeItem(ROLE_STORAGE_KEY);
+    localStorage.removeItem(ROLE_TIMESTAMP_KEY);
+  } catch (error) {
+    console.error('Error clearing stored role:', error);
+  }
+};
+
 const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [role, setRole] = useState(null);
+  const [roleLoading, setRoleLoading] = useState(true);
 
   // Register
   const register = (email, password) => {
@@ -40,43 +87,120 @@ const AuthProvider = ({ children }) => {
   // Logout
   const logOut = () => {
     setLoading(true);
-    localStorage.removeItem('token'); // ✅ Token remove
+    localStorage.removeItem('token');
+    clearStoredRole(); // Clear stored role on logout
     return signOut(auth);
   };
 
+  // Fetch user role from server
+  const fetchUserRole = async (userEmail, token) => {
+    try {
+      const baseURL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000';
+      const roleRes = await axios.get(`${baseURL}/users/role/${encodeURIComponent(userEmail)}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      return roleRes?.data?.role || null;
+    } catch (error) {
+      return null;
+    }
+  };
+
+  // Manual role refresh function - DISABLED to prevent role changes
+  // const refreshUserRole = async () => {
+  //   if (!user?.email) return;
+  //   
+  //   try {
+  //     const token = localStorage.getItem('token');
+  //     if (!token) return;
+  //     
+  //     const freshRole = await fetchUserRole(user.email, token);
+  //     
+  //     if (freshRole && freshRole !== role) {
+  //       setRole(freshRole);
+  //       setStoredRole(freshRole);
+  //     }
+  //   } catch (error) {
+  //     // Silently handle errors
+  //   }
+  // };
+
   // Listen for auth state changes
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, currentUser => {
-      console.log("User:", currentUser); // ✅ দেখো কি আসে
-  
+    const unsubscribe = onAuthStateChanged(auth, async currentUser => {
       setUser(currentUser);
-  
+      
       if (currentUser?.email) {
-        const userData = { email: currentUser.email };
-        axios.post("https://volunteerhub-server.vercel.app/jwt", userData)
-          .then(res => {
-            console.log("JWT Response:", res.data); // ✅ Must include token
-            localStorage.setItem("token", res.data.token);
-          })
-          .catch(error => console.log("JWT error:", error))
-          .finally(() => setLoading(false));
+        try {
+          const userData = { email: currentUser.email };
+          const baseURL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000';
+          
+          // Get JWT token
+          const jwtRes = await axios.post(`${baseURL}/jwt`, userData);
+          const token = jwtRes.data.token;
+          localStorage.setItem("token", token);
+
+          // Check if we have a valid stored role
+          const storedRole = getStoredRole();
+          
+          if (storedRole) {
+            // Use stored role immediately - NEVER CHANGE IT
+            setRole(storedRole);
+            setRoleLoading(false);
+          } else {
+            // No stored role, fetch from server only once and LOCK IT
+            setRoleLoading(true);
+            const freshRole = await fetchUserRole(currentUser.email, token);
+            const resolvedRole = freshRole || 'volunteer';
+            setRole(resolvedRole);
+            setStoredRole(resolvedRole); // LOCK THIS ROLE FOREVER
+            setRoleLoading(false);
+          }
+
+          // Upsert user WITHOUT role to avoid overwriting server role
+          try {
+            await axios.post(
+              `${baseURL}/users`,
+              {
+                name: currentUser.displayName || 'User',
+                email: currentUser.email,
+              },
+              {
+                headers: { Authorization: `Bearer ${token}` },
+              }
+            );
+          } catch (error) {
+            // Silently handle upsert errors
+          }
+        } catch (error) {
+          setRoleLoading(false);
+        }
       } else {
-        console.log("No user, skipping JWT");
-        setLoading(false);
+        setRole(null);
+        setRoleLoading(false);
+        clearStoredRole();
       }
+      setLoading(false);
     });
-  
     return () => unsubscribe();
   }, []);
   
+  // Update user role - ONLY WAY TO CHANGE ROLE
+  const updateUserRole = (nextRole) => {
+    setRole(nextRole);
+    setStoredRole(nextRole);
+  };
 
   const authInfo = {
     user,
     loading,
+    role,
+    roleLoading,
     register,
     login,
     googleLogin,
     logOut,
+    updateUserRole,
+    // refreshUserRole, // DISABLED to prevent role changes
   };
 
   return (

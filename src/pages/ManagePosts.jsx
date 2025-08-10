@@ -1,9 +1,11 @@
 import React, { useContext, useEffect, useState } from 'react';
 import Swal from 'sweetalert2';
 import { AuthContext } from '../context/AuthProvider';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { format } from 'date-fns';
+/* eslint-disable no-unused-vars */
 import { motion } from 'framer-motion';
+import useAxiosSecure from '../hooks/useAxiosSecure';
 import { 
   FaPlus, 
   FaEdit, 
@@ -21,11 +23,14 @@ import {
 
 const ManagePosts = () => {
     const { user } = useContext(AuthContext);
+    const axiosSecure = useAxiosSecure();
     const navigate = useNavigate();
     const [posts, setPosts] = useState([]);
     const [requests, setRequests] = useState([]);
     const [loading, setLoading] = useState(true);
-    const [activeTab, setActiveTab] = useState('posts');
+    const [searchParams, setSearchParams] = useSearchParams();
+    const initialTab = searchParams.get('tab') || 'posts';
+    const [activeTab, setActiveTab] = useState(initialTab);
 
     const token = localStorage.getItem('token');
 
@@ -43,6 +48,12 @@ const ManagePosts = () => {
         }
     }, [user, token, navigate]);
 
+    // Sync tab to URL
+    useEffect(() => {
+        setSearchParams({ tab: activeTab });
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [activeTab]);
+
     // Fetch my volunteer posts
     useEffect(() => {
         const fetchPosts = async () => {
@@ -54,24 +65,17 @@ const ManagePosts = () => {
                 console.log('Fetching posts for:', user.email);
                 console.log('Using token:', token);
                 
-                const res = await fetch(`https://volunteerhub-server.vercel.app/posts?organizerEmail=${user.email}`, {
-                    headers: {
-                        'Authorization': `Bearer ${token}`,
-                        'Content-Type': 'application/json'
-                    }
-                });
+                const res = await axiosSecure.get(`/posts`, { params: { organizerEmail: user.email }});
                 
-                console.log('Posts response status:', res.status);
-                
-                if (!res.ok) {
+                if (res.status !== 200) {
                     if (res.status === 403) {
                         console.log('No posts found for this user');
                         setPosts([]);
                     } else {
-                        throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+                        throw new Error(`HTTP ${res.status}`);
                     }
                 } else {
-                    const data = await res.json();
+                    const data = res.data;
                     console.log('Posts data:', data);
                     
                     // Filter posts to only show current user's posts
@@ -89,7 +93,7 @@ const ManagePosts = () => {
             }
         };
         fetchPosts();
-    }, [user, token]);
+    }, [user, token, axiosSecure]);
 
     // Fetch my volunteer requests
     useEffect(() => {
@@ -98,20 +102,8 @@ const ManagePosts = () => {
             try {
                 console.log('Fetching requests for:', user.email);
                 
-                const res = await fetch(`https://volunteerhub-server.vercel.app/volunteer-requests?email=${user.email}`, {
-                    headers: {
-                        'Authorization': `Bearer ${token}`,
-                        'Content-Type': 'application/json'
-                    }
-                });
-                
-                console.log('Requests response status:', res.status);
-                
-                if (!res.ok) {
-                    throw new Error(`HTTP ${res.status}: ${res.statusText}`);
-                }
-                
-                const data = await res.json();
+                const res = await axiosSecure.get(`/volunteer-requests`, { params: { email: user.email }});
+                const data = res.data;
                 console.log('Requests data:', data);
                 setRequests(data);
             } catch (err) {
@@ -119,7 +111,7 @@ const ManagePosts = () => {
             }
         };
         fetchRequests();
-    }, [user, token]);
+    }, [user, token, axiosSecure]);
 
         const handleDeletePost = async (id) => {
         if (!token) {
@@ -149,28 +141,7 @@ const ManagePosts = () => {
 
         if (result.isConfirmed) {
             try {
-                console.log('Making DELETE request to:', `https://volunteerhub-server.vercel.app/posts/${id}`);
-                
-                const res = await fetch(`https://volunteerhub-server.vercel.app/posts/${id}`, {
-                    method: 'DELETE',
-                    headers: {
-                        'Authorization': `Bearer ${token}`,
-                        'Content-Type': 'application/json'
-                    }
-                });
-                
-                console.log('Full response object:', res);
-                
-                console.log('Response status:', res.status);
-                console.log('Response headers:', res.headers);
-                
-                if (!res.ok) {
-                    const errorData = await res.json();
-                    console.error('API Error:', errorData);
-                    throw new Error(errorData.message || `HTTP ${res.status}: Delete failed`);
-                }
-                
-                const data = await res.json();
+                const { data } = await axiosSecure.delete(`/posts/${id}`);
                 console.log('Success response:', data);
                 
                 if (data.message === 'Post deleted') {
@@ -212,13 +183,7 @@ const ManagePosts = () => {
 
         if (result.isConfirmed) {
             try {
-                const res = await fetch(`https://volunteerhub-server.vercel.app/volunteer-requests/${id}`, {
-                    method: 'DELETE',
-                    headers: {
-                        'Authorization': `Bearer ${token}`
-                    }
-                });
-                const data = await res.json();
+                const { data } = await axiosSecure.delete(`/volunteer-requests/${id}`);
                 if (data.message === 'Request cancelled') {
                     setRequests(requests.filter(r => r._id !== id));
                     Swal.fire({
@@ -359,7 +324,7 @@ const ManagePosts = () => {
                                         My Volunteer Posts
                                     </h2>
                                     <Link 
-                                        to="/add-post" 
+                                        to="/dashboard/add-post" 
                                         className="btn btn-primary gap-2"
                                     >
                                         <FaPlus /> Add New Post
@@ -376,7 +341,7 @@ const ManagePosts = () => {
                                     <p className="text-gray-500 dark:text-gray-400 mb-6">
                                         Start by creating your first volunteer opportunity
                                     </p>
-                                    <Link to="/add-post" className="btn btn-primary gap-2">
+                                    <Link to="/dashboard/add-post" className="btn btn-primary gap-2">
                                         <FaPlus /> Create Your First Post
                                     </Link>
                                 </div>

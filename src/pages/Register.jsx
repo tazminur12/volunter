@@ -1,6 +1,6 @@
 import React, { useContext, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { FaGoogle, FaEye, FaEyeSlash, FaHandsHelping, FaUser, FaCamera, FaEnvelope, FaLock } from 'react-icons/fa';
+import { FaGoogle, FaEye, FaEyeSlash, FaHandsHelping, FaUser, FaEnvelope, FaLock } from 'react-icons/fa';
 import { motion } from 'framer-motion';
 import { AuthContext } from '../context/AuthProvider';
 import Swal from 'sweetalert2';
@@ -13,7 +13,7 @@ const Register = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [confirmPassword, setConfirmPassword] = useState('');
-  const { register, googleLogin } = useContext(AuthContext);
+  const { register, googleLogin, updateUserRole } = useContext(AuthContext);
   const navigate = useNavigate();
 
   const handleRegister = async (e) => {
@@ -22,9 +22,9 @@ const Register = () => {
     setLoading(true);
 
     const name = e.target.name.value;
-    const photo = e.target.photo.value;
     const email = e.target.email.value;
     const password = e.target.password.value;
+    const role = e.target.role.value; // 'volunteer' | 'organizer' | 'admin'
 
     // Password validation
     if (!/[A-Z]/.test(password)) {
@@ -50,10 +50,30 @@ const Register = () => {
 
     try {
       const result = await register(email, password);
-      await updateProfile(result.user, {
-        displayName: name,
-        photoURL: photo,
-      });
+      await updateProfile(result.user, { displayName: name });
+      // store role locally for demo; ideally save to DB
+      localStorage.setItem(`role:${email}`, role);
+      updateUserRole(role);
+
+      // Upsert user in DB with selected role
+      try {
+        const baseURL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000';
+        const token = localStorage.getItem('token');
+        await fetch(`${baseURL}/users`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          },
+          body: JSON.stringify({
+            name,
+            email,
+            role,
+          })
+        });
+      } catch (e) {
+        console.error('User upsert during registration failed:', e);
+      }
 
       await Swal.fire({
         title: 'Welcome!',
@@ -254,22 +274,7 @@ const Register = () => {
                 </div>
               </motion.div>
 
-              {/* Profile Photo URL Field */}
-              <motion.div variants={itemVariants}>
-                <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
-                  Profile Photo URL
-                </label>
-                <div className="relative">
-                  <FaCamera className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
-                  <input
-                    type="url"
-                    name="photo"
-                    required
-                    placeholder="https://example.com/photo.jpg"
-                    className="w-full pl-10 pr-4 py-4 rounded-xl border-2 border-gray-200 focus:border-green-500 focus:ring-4 focus:ring-green-500/20 transition-all duration-300 dark:bg-gray-700/50 dark:border-gray-600 dark:text-white"
-                  />
-                </div>
-              </motion.div>
+              {/* Removed Photo URL field; avatar derives from email */}
 
               {/* Email Field */}
               <motion.div variants={itemVariants}>
@@ -287,6 +292,8 @@ const Register = () => {
                   />
                 </div>
               </motion.div>
+
+              {/* Role Field - REMOVED - All users are volunteers by default */}
 
               {/* Password Field */}
               <motion.div variants={itemVariants}>

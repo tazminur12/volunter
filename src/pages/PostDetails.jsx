@@ -26,10 +26,13 @@ import {
   FaBookmark,
   FaBookmark as FaBookmarkOutline
 } from 'react-icons/fa';
+/* eslint-disable no-unused-vars */
 import { motion } from 'framer-motion';
 import { format } from 'date-fns';
 import ErrorPage from './ErrorPage';
 import LoadingSpinner from '../components/LoadingSpinner';
+import useAxios from '../hooks/useAxios';
+import useAxiosSecure from '../hooks/useAxiosSecure';
 
 const PostDetails = () => {
     const { id } = useParams();
@@ -42,22 +45,25 @@ const PostDetails = () => {
     const [applying, setApplying] = React.useState(false);
     const [hasApplied, setHasApplied] = React.useState(false);
 
+    const axiosPublic = useAxios();
+    const axiosSecure = useAxiosSecure();
+
     React.useEffect(() => {
         const fetchPost = async () => {
             try {
                 console.log('Fetching post with ID:', id);
-                const response = await fetch(`https://volunteerhub-server.vercel.app/posts/${id}`);
+                const response = await axiosPublic.get(`/posts/${id}`);
                 console.log('Response status:', response.status);
                 
-                if (!response.ok) {
+                if (response.status !== 200) {
                     if (response.status === 404) {
                         throw new Error('Post not found');
                     } else {
-                        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                        throw new Error(`HTTP ${response.status}`);
                     }
                 }
                 
-                const data = await response.json();
+                const data = response.data;
                 console.log('Post data:', data);
                 setPost(data);
             } catch (err) {
@@ -69,7 +75,7 @@ const PostDetails = () => {
         };
 
         fetchPost();
-    }, [id]);
+    }, [id, axiosPublic]);
 
     const handleLike = () => {
         setIsLiked(!isLiked);
@@ -116,29 +122,14 @@ const PostDetails = () => {
                 appliedAt: new Date().toISOString()
             };
 
-            const requestResponse = await fetch('https://volunteerhub-server.vercel.app/volunteer-requests', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
-                },
-                body: JSON.stringify(requestData)
-            });
-
-            if (!requestResponse.ok) {
+            const requestResponse = await axiosSecure.post('/volunteer-requests', requestData);
+            if (requestResponse.status !== 200 && requestResponse.status !== 201) {
                 throw new Error('Failed to submit application');
             }
 
             // Decrease volunteer count
-            const decreaseResponse = await fetch(`https://volunteerhub-server.vercel.app/posts/${post._id}/decrease-volunteers`, {
-                method: 'PATCH',
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json'
-                }
-            });
-
-            if (decreaseResponse.ok) {
+            const decreaseResponse = await axiosSecure.patch(`/posts/${post._id}/decrease-volunteers`);
+            if (decreaseResponse.status >= 200 && decreaseResponse.status < 300) {
                 setHasApplied(true);
                 Swal.fire({
                     icon: 'success',

@@ -6,7 +6,7 @@ import Swal from 'sweetalert2';
 import { AuthContext } from '../context/AuthProvider';
 
 const Login = () => {
-  const { login, googleLogin } = useContext(AuthContext);
+  const { login, googleLogin, updateUserRole } = useContext(AuthContext);
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [emailError, setEmailError] = useState('');
@@ -43,6 +43,29 @@ const Login = () => {
     setLoading(true);
     try {
       await login(email, password);
+      // Load stored role (demo)
+      const storedRole = localStorage.getItem(`role:${email}`) || 'volunteer';
+      updateUserRole(storedRole);
+
+      // Ensure user exists in DB with role on login
+      try {
+        const baseURL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000';
+        const token = localStorage.getItem('token');
+        await fetch(`${baseURL}/users`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          },
+          body: JSON.stringify({
+            email,
+            role: storedRole,
+            lastLogin: new Date().toISOString(),
+          })
+        });
+      } catch (e) {
+        console.error('Login upsert failed:', e);
+      }
       await Swal.fire({
         title: 'Welcome Back!',
         text: 'Successfully logged in to your account',
@@ -78,7 +101,40 @@ const Login = () => {
   const handleSocialLogin = async () => {
     setLoading(true);
     try {
-      await googleLogin();
+      const googleRes = await googleLogin();
+      // Try load role by email from backend if registered, else default volunteer
+      const gEmail = googleRes?.user?.email;
+      let storedRole = 'volunteer';
+      if (gEmail) {
+        try {
+          const baseURL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000';
+          const token = localStorage.getItem('token');
+          const res = await fetch(`${baseURL}/users/role/${encodeURIComponent(gEmail)}`, {
+            headers: { Authorization: `Bearer ${token}` }
+          });
+          if (res.ok) {
+            const data = await res.json();
+            if (data?.role) storedRole = data.role;
+          }
+        } catch (_) {
+          // ignore
+        }
+      }
+      updateUserRole(storedRole);
+
+      // Upsert basic user (do not override role)
+      try {
+        const baseURL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000';
+        const token = localStorage.getItem('token');
+        await fetch(`${baseURL}/users`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          },
+          body: JSON.stringify({ email: gEmail, lastLogin: new Date().toISOString() })
+        });
+      } catch (_) {}
       await Swal.fire({
         title: 'Welcome!',
         text: 'Successfully signed in with Google',

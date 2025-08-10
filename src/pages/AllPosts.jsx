@@ -38,7 +38,7 @@ const AllPosts = () => {
 
   const fetchPosts = async () => {
     try {
-      const response = await fetch('https://volunteerhub-server.vercel.app/posts', {
+      const response = await fetch('http://localhost:3000/posts', {
         headers: {
           Authorization: `Bearer ${token}`,
         },

@@ -1,3 +1,4 @@
+/* eslint-disable no-unused-vars */
 import { useContext, useEffect, useRef, useState } from 'react';
 import { Link, NavLink } from 'react-router-dom';
 import { AuthContext } from '../context/AuthProvider';
@@ -180,38 +181,6 @@ const Navbar = () => {
               variants={{ visible: { transition: { staggerChildren: 0.1 } } }}
             >
               {navLinks}
-              {user && (
-                <>
-                  <motion.li variants={navLinkVariants}>
-                    <NavLink 
-                      to="/add-post"
-                      className={({ isActive }) => 
-                        `px-4 py-2 rounded-lg font-medium transition-all duration-300 ${
-                          isActive 
-                            ? 'text-primary bg-primary/10 border border-primary/20' 
-                            : 'text-gray-700 dark:text-gray-300 hover:text-primary hover:bg-primary/5'
-                        }`
-                      }
-                    >
-                      Add Need
-                    </NavLink>
-                  </motion.li>
-                  <motion.li variants={navLinkVariants}>
-                    <NavLink 
-                      to="/manage-posts"
-                      className={({ isActive }) => 
-                        `px-4 py-2 rounded-lg font-medium transition-all duration-300 ${
-                          isActive 
-                            ? 'text-secondary bg-secondary/10 border border-secondary/20' 
-                            : 'text-gray-700 dark:text-gray-300 hover:text-secondary hover:bg-secondary/5'
-                        }`
-                      }
-                    >
-                      Manage Posts
-                    </NavLink>
-                  </motion.li>
-                </>
-              )}
             </motion.ul>
           </div>
 
@@ -308,14 +277,17 @@ const Navbar = () => {
 
                       {/* Menu Items */}
                       <div className="p-2">
-                        <motion.button
-                          whileHover={{ x: 4 }}
-                          whileTap={{ scale: 0.95 }}
-                          className="w-full flex items-center gap-3 px-3 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
-                        >
-                          <FaUser className="text-primary" />
-                          <span>Profile</span>
-                        </motion.button>
+                        <Link to="/dashboard">
+                          <motion.button
+                            whileHover={{ x: 4 }}
+                            whileTap={{ scale: 0.95 }}
+                            onClick={() => setProfileDropdownOpen(false)}
+                            className="w-full flex items-center gap-3 px-3 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+                          >
+                            <FaCog className="text-secondary" />
+                            <span>Dashboard</span>
+                          </motion.button>
+                        </Link>
                         
                         <motion.button
                           whileHover={{ x: 4 }}
@@ -420,36 +392,6 @@ const Navbar = () => {
                       {navLinks}
                       {user ? (
                         <>
-                          <motion.li variants={navLinkVariants}>
-                            <NavLink 
-                              to="/add-post" 
-                              onClick={() => setMobileMenuOpen(false)}
-                              className={({ isActive }) => 
-                                `block px-4 py-3 rounded-lg font-medium transition-all duration-300 ${
-                                  isActive 
-                                    ? 'text-primary bg-primary/10 border border-primary/20' 
-                                    : 'text-gray-700 dark:text-gray-300 hover:text-primary hover:bg-primary/5'
-                                }`
-                              }
-                            >
-                              Add Need
-                            </NavLink>
-                          </motion.li>
-                          <motion.li variants={navLinkVariants}>
-                            <NavLink 
-                              to="/manage-posts" 
-                              onClick={() => setMobileMenuOpen(false)}
-                              className={({ isActive }) => 
-                                `block px-4 py-3 rounded-lg font-medium transition-all duration-300 ${
-                                  isActive 
-                                    ? 'text-secondary bg-secondary/10 border border-secondary/20' 
-                                    : 'text-gray-700 dark:text-gray-300 hover:text-secondary hover:bg-secondary/5'
-                                }`
-                              }
-                            >
-                              Manage Posts
-                            </NavLink>
-                          </motion.li>
                           <div className="border-t border-gray-200 dark:border-gray-700 my-2" />
                           <motion.li variants={navLinkVariants}>
                             <button 
