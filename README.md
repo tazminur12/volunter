@@ -61,7 +61,7 @@ VolunteerHub is a comprehensive volunteer management platform designed to bridge
 - **Profile Dashboard:** Centralized user information management
 - **Post History:** Complete overview of user's volunteer posts
 - **Application Tracking:** Monitor volunteer application status
-- **Role-based Access:** Different permissions for different user types
+
 
 ### 🎨 **User Interface & Experience**
 - **Responsive Design:** Mobile-first approach with cross-device compatibility
