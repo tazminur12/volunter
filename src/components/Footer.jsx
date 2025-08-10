@@ -87,7 +87,7 @@ const Footer = () => {
                   VolunteerHub
                 </span>
               </div>
-              <p className="text-gray-600 dark:text-gray-400 mb-4 text-sm">
+              <p className="bg-gradient-to-r from-primary via-secondary to-accent bg-clip-text text-transparent mb-4 text-sm font-medium">
                 Empowering communities through meaningful volunteer opportunities.
               </p>
               

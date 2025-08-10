@@ -5,30 +5,90 @@ import { motion } from 'framer-motion';
 import Slider from 'react-slick';
 import 'slick-carousel/slick/slick.css';
 import 'slick-carousel/slick/slick-theme.css';
+import useAxiosSecure from '../hooks/useAxiosSecure';
 import {
   FaHandsHelping, FaCalendarAlt, FaMapMarkerAlt, FaClock, FaHeart, FaUsers,
   FaSearch, FaArrowRight, FaStar, FaEnvelope, FaPhone, FaGlobe, FaAward,
   FaShieldAlt, FaLeaf, FaGraduationCap, FaHandHoldingHeart, FaLightbulb,
-  FaRocket, FaGift, FaPercent, FaFacebookF, FaTwitter, FaInstagram, FaHome
+  FaRocket, FaGift, FaPercent, FaFacebookF, FaTwitter, FaInstagram, FaHome,
+  FaUser, FaBookOpen
 } from 'react-icons/fa';
 
 const Home = () => {
+  const axiosSecure = useAxiosSecure();
   const [posts, setPosts] = useState([]);
+  const [articles, setArticles] = useState([]);
   const [loading, setLoading] = useState(true);
   const [email, setEmail] = useState('');
 
   useEffect(() => {
-    fetch('http://localhost:3000/posts?sort=deadline&limit=8')
-      .then(res => res.json())
-      .then(data => {
-        setPosts(data);
-        setLoading(false);
+    // Fetch volunteer posts
+    axiosSecure.get('/posts?sort=deadline&limit=8')
+      .then(res => {
+        setPosts(res.data);
       })
       .catch(error => {
         console.error('Error fetching posts:', error);
-        setLoading(false);
       });
-  }, []);
+
+    // Fetch blog posts from backend using exact same logic as Blog.jsx
+    const fetchBlogPosts = async () => {
+      try {
+        setLoading(true);
+        let allPosts = [];
+        let hasPosts = false;
+        
+        // Try the main blog posts endpoint first
+        try {
+          const response = await axiosSecure.get('/blog-posts');
+          
+          if (response.data.success && response.data.blogPosts) {
+            allPosts = [...allPosts, ...response.data.blogPosts];
+            hasPosts = true;
+          } else if (response.data.blogPosts) {
+            allPosts = [...allPosts, ...response.data.blogPosts];
+            hasPosts = true;
+          }
+        } catch {
+          // Silently handle error
+        }
+        
+        // Try the user's blog posts endpoint
+        try {
+          const userResponse = await axiosSecure.get('/my-blog-posts');
+          
+          if (userResponse.data.blogPosts && userResponse.data.blogPosts.length > 0) {
+            // Merge posts, avoiding duplicates by ID
+            const existingIds = new Set(allPosts.map(post => post._id));
+            const newPosts = userResponse.data.blogPosts.filter(post => !existingIds.has(post._id));
+            
+            if (newPosts.length > 0) {
+              allPosts = [...allPosts, ...newPosts];
+            }
+            
+            hasPosts = true;
+          }
+        } catch {
+          // Silently handle error
+        }
+        
+        if (hasPosts && allPosts.length > 0) {
+          // Take only first 6 posts for home page
+          setArticles(allPosts.slice(0, 6));
+        } else {
+          setArticles([]);
+        }
+        
+      } catch (error) {
+        console.error('Error fetching blog posts:', error);
+        setArticles([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchBlogPosts();
+  }, [axiosSecure]);
 
   const sliderSettings = {
     dots: true,
@@ -85,26 +145,7 @@ const Home = () => {
     accent: 'bg-accent/10 text-accent'
   };
 
-  const blogPosts = [
-    {
-      id: 1,
-      title: 'The Impact of Community Volunteering',
-      excerpt: 'Discover how local volunteering initiatives are transforming neighborhoods.',
-      image: 'https://images.unsplash.com/photo-1521791136064-7986c2920216',
-      date: '2024-01-15',
-      author: 'Sarah Johnson',
-      readTime: '5 min read'
-    },
-    {
-      id: 2,
-      title: 'Volunteer Management Best Practices',
-      excerpt: 'Learn effective strategies for organizing volunteer programs.',
-      image: 'https://images.unsplash.com/photo-1549923746-c502d488b3ea',
-      date: '2024-01-12',
-      author: 'Michael Chen',
-      readTime: '7 min read'
-    }
-  ];
+
 
   const specialOffers = [
     {
@@ -363,127 +404,7 @@ const Home = () => {
         </div>
       </section>
 
-      {/* Recent Products Section */}
-      <section className="my-24">
-        <div className="text-center mb-16">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6 }}
-            viewport={{ once: true, margin: "-100px" }}
-          >
-            <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold mb-6">
-              <span className="bg-gradient-to-r from-secondary to-accent bg-clip-text text-transparent">
-                Latest Opportunities
-              </span>
-            </h2>
-            <p className="text-lg text-gray-600 dark:text-gray-300 max-w-3xl mx-auto">
-              Newly posted volunteer needs in your area
-            </p>
-          </motion.div>
-        </div>
 
-        <motion.div
-          variants={containerVariants}
-          initial="hidden"
-          whileInView="visible"
-          viewport={{ once: true, margin: "-100px" }}
-          className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6"
-        >
-          {posts.slice(4, 8).map((post) => (
-            <motion.div
-              key={post._id}
-              variants={cardVariants}
-              whileHover={{ y: -10 }}
-              className="card bg-base-100 shadow-lg rounded-xl overflow-hidden transition-all duration-300 hover:shadow-xl h-full flex flex-col"
-            >
-              <figure className="relative h-48">
-                <img
-                  src={post.thumbnail || 'https://images.unsplash.com/photo-1521791136064-7986c2920216'}
-                  alt={post.title}
-                  className="w-full h-full object-cover"
-                  loading="lazy"
-                  onError={(e) => {
-                    e.target.src = 'https://images.unsplash.com/photo-1521791136064-7986c2920216';
-                  }}
-                />
-                <div className="absolute top-4 right-4 badge badge-secondary text-white shadow-md">
-                  New
-                </div>
-              </figure>
-              <div className="card-body p-6 flex-1 flex flex-col">
-                <h3 className="card-title text-lg mb-2">{post.title}</h3>
-                                  <p className="text-gray-600 dark:text-gray-300 mb-4 line-clamp-3 flex-1">{post.description}</p>
-                <div className="flex flex-wrap gap-2 mb-4">
-                  <div className="badge badge-primary gap-2">
-                    <FaUsers /> {post.volunteersNeeded} needed
-                  </div>
-                                      <div className="badge badge-accent gap-2">
-                      <FaClock /> {formatDate(post.deadline)}
-                    </div>
-                </div>
-                <div className="card-actions justify-end mt-auto">
-                  <Link
-                    to={`/post/${post._id}`}
-                    className="btn btn-secondary btn-sm"
-                  >
-                    See More
-                  </Link>
-                </div>
-              </div>
-            </motion.div>
-          ))}
-        </motion.div>
-      </section>
-
-      {/* Blog Section */}
-      <section className="my-24">
-        <motion.div
-          initial={{ opacity: 0 }}
-          whileInView={{ opacity: 1 }}
-          transition={{ duration: 0.8 }}
-          viewport={{ once: true }}
-          className="max-w-6xl mx-auto"
-        >
-          <div className="text-center mb-16">
-            <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold mb-6 dark:text-white">
-              <span className="bg-gradient-to-r from-accent to-primary bg-clip-text text-transparent">
-                Latest Insights
-              </span>
-            </h2>
-            <p className="text-lg text-gray-600 dark:text-gray-300 max-w-3xl mx-auto">
-              Stay informed with the latest news and tips from the volunteering community
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            {blogPosts.map((post) => (
-              <motion.div
-                key={post.id}
-                whileHover={{ y: -5 }}
-                className="bg-white dark:bg-gray-900 p-6 rounded-2xl shadow-lg hover:shadow-xl transition-all"
-              >
-                <img
-                  src={post.image}
-                  alt={post.title}
-                  className="w-full h-48 object-cover rounded-xl mb-4"
-                />
-                <div className="flex items-center gap-4 text-sm text-gray-500 dark:text-gray-400 mb-3">
-                  <span>{post.date}</span>
-                  <span>•</span>
-                  <span>{post.readTime}</span>
-                </div>
-                <h3 className="font-bold text-lg mb-3 dark:text-white">{post.title}</h3>
-                <p className="text-gray-600 dark:text-gray-300 mb-4">{post.excerpt}</p>
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-gray-500 dark:text-gray-400">By {post.author}</span>
-                  <button className="btn btn-primary btn-sm">Read More</button>
-                </div>
-              </motion.div>
-            ))}
-          </div>
-        </motion.div>
-      </section>
 
       {/* Special Offers Section */}
       <section className="my-24 bg-gradient-to-r from-accent/10 to-primary/10 p-12 rounded-3xl">
