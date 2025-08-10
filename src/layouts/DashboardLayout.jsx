@@ -1,6 +1,6 @@
 import React, { useContext } from 'react';
 import { Link, NavLink, Outlet, useNavigate } from 'react-router-dom';
-import { FaPlusCircle, FaTasks, FaUserCircle, FaHome, FaSignOutAlt } from 'react-icons/fa';
+import { FaPlusCircle, FaTasks, FaUserCircle, FaHome, FaSignOutAlt, FaBlog } from 'react-icons/fa';
 import { AuthContext } from '../context/AuthProvider';
 
 const DashboardLayout = () => {
@@ -88,6 +88,21 @@ const DashboardLayout = () => {
           >
             <FaTasks />
             <span>My Posts</span>
+          </NavLink>
+
+          {/* Blog Management - Available for all users */}
+          <NavLink
+            to="/dashboard/blog-management"
+            className={({ isActive }) =>
+              `flex items-center gap-2 px-4 py-3 rounded-lg transition-colors ${
+                isActive
+                  ? 'bg-warning/10 text-warning border border-warning/20'
+                  : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+              }`
+            }
+          >
+            <FaBlog />
+            <span>Blog Management</span>
           </NavLink>
 
           {/* Admin section - REMOVED - All users have same access */}

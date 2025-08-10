@@ -32,21 +32,13 @@ const ManagePosts = () => {
     const initialTab = searchParams.get('tab') || 'posts';
     const [activeTab, setActiveTab] = useState(initialTab);
 
-    const token = localStorage.getItem('token');
-
     // Check if user is logged in and redirect if not
     useEffect(() => {
         if (!user) {
-            console.log('No user found, redirecting to login');
             navigate('/login');
             return;
         }
-        
-        if (!token) {
-            console.log('No token found, redirecting to login');
-            navigate('/login');
-        }
-    }, [user, token, navigate]);
+    }, [user, navigate]);
 
     // Sync tab to URL
     useEffect(() => {
@@ -54,79 +46,67 @@ const ManagePosts = () => {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [activeTab]);
 
+    // Update active tab when URL changes
+    useEffect(() => {
+        const tabFromURL = searchParams.get('tab');
+        if (tabFromURL && tabFromURL !== activeTab) {
+            setActiveTab(tabFromURL);
+        }
+    }, [searchParams]);
+
     // Fetch my volunteer posts
     useEffect(() => {
         const fetchPosts = async () => {
-            if (!user?.email || !token) {
+            if (!user?.email) {
                 setLoading(false);
                 return;
             }
             try {
-                console.log('Fetching posts for:', user.email);
-                console.log('Using token:', token);
-                
                 const res = await axiosSecure.get(`/posts`, { params: { organizerEmail: user.email }});
                 
                 if (res.status !== 200) {
                     if (res.status === 403) {
-                        console.log('No posts found for this user');
                         setPosts([]);
                     } else {
                         throw new Error(`HTTP ${res.status}`);
                     }
                 } else {
                     const data = res.data;
-                    console.log('Posts data:', data);
                     
                     // Filter posts to only show current user's posts
                     const myPosts = data.filter(post => post.organizerEmail === user.email);
-                    console.log('Filtered posts (my posts only):', myPosts);
-                    console.log('Current user email:', user.email);
                     
                     setPosts(myPosts);
                 }
             } catch (err) {
-                console.error('Error fetching posts', err);
                 setPosts([]);
             } finally {
                 setLoading(false);
             }
         };
         fetchPosts();
-    }, [user, token, axiosSecure]);
+    }, [user, axiosSecure]);
 
     // Fetch my volunteer requests
     useEffect(() => {
         const fetchRequests = async () => {
-            if (!user?.email || !token) return;
+            if (!user?.email) return;
             try {
-                console.log('Fetching requests for:', user.email);
-                
                 const res = await axiosSecure.get(`/volunteer-requests`, { params: { email: user.email }});
                 const data = res.data;
-                console.log('Requests data:', data);
                 setRequests(data);
             } catch (err) {
-                console.error('Error fetching requests', err);
+                // Silently handle error
             }
         };
         fetchRequests();
-    }, [user, token, axiosSecure]);
+    }, [user, axiosSecure]);
 
         const handleDeletePost = async (id) => {
-        if (!token) {
-          Swal.fire('Error', 'No token found, please login again.', 'error');
-          return;
-        }
+        // Token check removed since JWT backend call is disabled
         
         // Find the post to check ownership
         const postToDelete = posts.find(p => p._id === id);
-        console.log('Post to delete:', postToDelete);
-        console.log('Delete attempt for post ID:', id);
-        console.log('Current user email:', user?.email);
-        console.log('Post owner email:', postToDelete?.organizerEmail);
-        console.log('Token:', token);
-        console.log('Token length:', token?.length);
         
         const result = await Swal.fire({
             title: 'Delete Post?',
@@ -142,7 +122,6 @@ const ManagePosts = () => {
         if (result.isConfirmed) {
             try {
                 const { data } = await axiosSecure.delete(`/posts/${id}`);
-                console.log('Success response:', data);
                 
                 if (data.message === 'Post deleted') {
                     setPosts(posts.filter(p => p._id !== id));
@@ -157,7 +136,6 @@ const ManagePosts = () => {
                     throw new Error('Unexpected response from server');
                 }
             } catch (error) {
-                console.error('Delete error details:', error);
                 Swal.fire('Error', error.message || 'Failed to delete post. Please try again.', 'error');
             }
         }
@@ -165,10 +143,7 @@ const ManagePosts = () => {
       
 
     const handleCancelRequest = async (id) => {
-        if (!token) {
-          Swal.fire('Error', 'No token found, please login again.', 'error');
-          return;
-        }
+        // Token check removed since JWT backend call is disabled
         
         const result = await Swal.fire({
             title: 'Cancel Request?',
@@ -195,7 +170,6 @@ const ManagePosts = () => {
                     });
                 }
             } catch (err) {
-                console.error('Cancel error:', err);
                 Swal.fire('Error', 'Failed to cancel request. Please try again.', 'error');
             }
         }
@@ -388,7 +362,7 @@ const ManagePosts = () => {
                                                     {post.organizerEmail === user.email ? (
                                                         <>
                                                             <Link 
-                                                                to={`/update-post/${post._id}`} 
+                                                                to={`/dashboard/update-post/${post._id}`} 
                                                                 className="btn btn-sm btn-outline btn-primary gap-1 flex-1"
                                                             >
                                                                 <FaEdit /> Edit

@@ -1,8 +1,8 @@
 import React, { useContext, useMemo } from 'react';
 import { AuthContext } from '../../context/AuthProvider';
 import { format } from 'date-fns';
-import { FaUserShield, FaClock, FaCrown, FaUser, FaUsers, FaPlus, FaTools } from 'react-icons/fa';
-import { Link } from 'react-router-dom';
+import { FaUserShield, FaClock, FaCrown, FaUser, FaStar } from 'react-icons/fa';
+import RatingManagement from '../../components/RatingManagement';
 
 const DashboardOverview = () => {
   const { user, role } = useContext(AuthContext);
@@ -25,9 +25,7 @@ const DashboardOverview = () => {
     }
   }, [user]);
 
-  const isAdmin = role === 'admin';
-  const isOrganizer = role === 'organizer';
-  const isVolunteer = role === 'volunteer' || !role;
+
 
   return (
     <div className="space-y-6">
@@ -70,45 +68,21 @@ const DashboardOverview = () => {
         </div>
       </div>
 
-      {/* Role-wise quick actions */}
+      {/* Rating Management Section */}
       <div className="bg-white dark:bg-gray-800 rounded-2xl shadow p-6">
-        <h3 className="font-semibold text-gray-800 dark:text-white mb-4">Quick Actions</h3>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {(isAdmin || isOrganizer) && (
-            <Link to="/dashboard/add-post" className="rounded-xl border border-gray-200 dark:border-gray-700 p-5 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors flex items-center gap-3">
-              <div className="w-10 h-10 rounded-lg bg-primary/10 text-primary flex items-center justify-center">
-                <FaPlus />
-              </div>
-              <div>
-                <div className="font-semibold text-gray-800 dark:text-white">Create Opportunity</div>
-                <div className="text-sm text-gray-600 dark:text-gray-300">Post a new volunteer need</div>
-              </div>
-            </Link>
-          )}
-
-          <Link to="/dashboard/applications" className="rounded-xl border border-gray-200 dark:border-gray-700 p-5 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors flex items-center gap-3">
-            <div className="w-10 h-10 rounded-lg bg-secondary/10 text-secondary flex items-center justify-center">
-              <FaTools />
-            </div>
-            <div>
-              <div className="font-semibold text-gray-800 dark:text-white">My Applications</div>
-              <div className="text-sm text-gray-600 dark:text-gray-300">View application statuses</div>
-            </div>
-          </Link>
-
-          {isVolunteer && (
-            <Link to="/dashboard/applications" className="rounded-xl border border-gray-200 dark:border-gray-700 p-5 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors flex items-center gap-3">
-              <div className="w-10 h-10 rounded-lg bg-accent/10 text-accent flex items-center justify-center">
-                <FaUsers />
-              </div>
-              <div>
-                <div className="font-semibold text-gray-800 dark:text-white">My Applications</div>
-                <div className="text-sm text-gray-600 dark:text-gray-300">Track your requests</div>
-              </div>
-            </Link>
-          )}
+        <div className="flex items-center gap-3 mb-6">
+          <div className="w-10 h-10 rounded-xl bg-yellow-500/10 text-yellow-500 flex items-center justify-center">
+            <FaStar />
+          </div>
+          <div>
+            <h3 className="text-xl font-semibold text-gray-800 dark:text-white">My Ratings & Reviews</h3>
+            <p className="text-gray-600 dark:text-gray-400">Manage your ratings and reviews for blog posts</p>
+          </div>
         </div>
+        
+        <RatingManagement />
       </div>
+
     </div>
   );
 };

@@ -102,25 +102,9 @@ const Login = () => {
     setLoading(true);
     try {
       const googleRes = await googleLogin();
-      // Try load role by email from backend if registered, else default volunteer
+      // Set default role since backend endpoint doesn't exist
       const gEmail = googleRes?.user?.email;
-      let storedRole = 'volunteer';
-      if (gEmail) {
-        try {
-          const baseURL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000';
-          const token = localStorage.getItem('token');
-          const res = await fetch(`${baseURL}/users/role/${encodeURIComponent(gEmail)}`, {
-            headers: { Authorization: `Bearer ${token}` }
-          });
-          if (res.ok) {
-            const data = await res.json();
-            if (data?.role) storedRole = data.role;
-          }
-        } catch (_) {
-          // ignore
-        }
-      }
-      updateUserRole(storedRole);
+      updateUserRole('volunteer');
 
       // Upsert basic user (do not override role)
       try {

@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { motion } from 'framer-motion';
 import { 
   FaSearch, 
   FaCalendarAlt, 
@@ -23,8 +22,13 @@ import {
   FaClock,
   FaComments
 } from 'react-icons/fa';
+import useAxiosSecure from '../hooks/useAxiosSecure';
+import LoadingSpinner from '../components/LoadingSpinner';
+import RatingSystem from '../components/RatingSystem';
 
 const Blog = () => {
+  const axiosSecure = useAxiosSecure();
+  
   const [articles, setArticles] = useState([]);
   const [filteredArticles, setFilteredArticles] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -33,124 +37,103 @@ const Blog = () => {
   const [sortBy, setSortBy] = useState('latest');
   const [likedArticles, setLikedArticles] = useState(new Set());
   const [savedArticles, setSavedArticles] = useState(new Set());
+  const [error, setError] = useState('');
 
-  // Sample blog data - in real app, this would come from API
-  const sampleArticles = [
-    {
-      id: 1,
-      title: "The Impact of Community Volunteering on Mental Health",
-      excerpt: "Discover how volunteering can improve your mental well-being and create lasting positive changes in your life and community.",
-      content: "Volunteering has been shown to have numerous mental health benefits, including reduced stress, increased happiness, and a sense of purpose. This article explores the science behind these benefits and provides practical tips for getting started.",
-      author: "Dr. Sarah Johnson",
-      authorAvatar: "https://images.unsplash.com/photo-1494790108755-2616b612b786?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=2070&q=80",
-      category: "Mental Health",
-      image: "https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=2070&q=80",
-      publishDate: "2024-01-15",
-      readTime: "5 min read",
-      views: 1247,
-      likes: 89,
-      comments: 23,
-      featured: true
-    },
-    {
-      id: 2,
-      title: "10 Essential Skills Every Volunteer Should Develop",
-      excerpt: "From communication to problem-solving, learn the key skills that will make you an effective and impactful volunteer.",
-      content: "Being a successful volunteer requires more than just good intentions. This comprehensive guide covers the essential skills that will help you make a real difference in your community.",
-      author: "Michael Chen",
-      authorAvatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=2070&q=80",
-      category: "Skills Development",
-      image: "https://images.unsplash.com/photo-1522202176988-66273c2fd55f?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=2070&q=80",
-      publishDate: "2024-01-12",
-      readTime: "8 min read",
-      views: 2156,
-      likes: 156,
-      comments: 34,
-      featured: true
-    },
-    {
-      id: 3,
-      title: "Environmental Volunteering: Making a Difference for Our Planet",
-      excerpt: "Explore various ways to contribute to environmental conservation through volunteering and understand the global impact of local actions.",
-      content: "Environmental volunteering offers unique opportunities to protect our planet while connecting with like-minded individuals. Learn about different types of environmental volunteer work and how to get involved.",
-      author: "Emma Rodriguez",
-      authorAvatar: "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=2070&q=80",
-      category: "Environment",
-      image: "https://images.unsplash.com/photo-1441974231531-c6227db76b6e?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=2070&q=80",
-      publishDate: "2024-01-10",
-      readTime: "6 min read",
-      views: 1893,
-      likes: 134,
-      comments: 28,
-      featured: false
-    },
-    {
-      id: 4,
-      title: "Youth Volunteering: Empowering the Next Generation",
-      excerpt: "Discover how young people are making a difference through volunteering and the long-term benefits of early community engagement.",
-      content: "Youth volunteering programs are creating the next generation of community leaders. This article highlights successful youth volunteer initiatives and their impact on personal development.",
-      author: "David Thompson",
-      authorAvatar: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=2070&q=80",
-      category: "Youth Programs",
-      image: "https://images.unsplash.com/photo-1529626455594-4ff0802cfb7e?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=2070&q=80",
-      publishDate: "2024-01-08",
-      readTime: "7 min read",
-      views: 1678,
-      likes: 98,
-      comments: 19,
-      featured: false
-    },
-    {
-      id: 5,
-      title: "Corporate Volunteering: Building Stronger Teams Through Service",
-      excerpt: "Learn how companies are implementing volunteer programs to boost employee morale, team building, and corporate social responsibility.",
-      content: "Corporate volunteering programs are becoming increasingly popular as companies recognize the benefits of community engagement for employee development and company culture.",
-      author: "Lisa Wang",
-      authorAvatar: "https://images.unsplash.com/photo-1487412720507-e7ab37603c6f?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=2070&q=80",
-      category: "Corporate",
-      image: "https://images.unsplash.com/photo-1552664730-d307ca884978?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=2070&q=80",
-      publishDate: "2024-01-05",
-      readTime: "9 min read",
-      views: 2341,
-      likes: 178,
-      comments: 42,
-      featured: false
-    },
-    {
-      id: 6,
-      title: "Digital Volunteering: Making an Impact from Home",
-      excerpt: "Explore the world of virtual volunteering and how technology is enabling people to contribute to causes they care about remotely.",
-      content: "Digital volunteering has opened up new possibilities for people to make a difference without leaving their homes. From online tutoring to virtual fundraising, discover various ways to volunteer digitally.",
-      author: "Alex Kim",
-      authorAvatar: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=2070&q=80",
-      category: "Technology",
-      image: "https://images.unsplash.com/photo-1516321318423-f06f85e504b3?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=2070&q=80",
-      publishDate: "2024-01-03",
-      readTime: "4 min read",
-      views: 1456,
-      likes: 112,
-      comments: 31,
-      featured: false
+  // Fetch blog posts from backend only
+  const fetchBlogPosts = async () => {
+    try {
+      setLoading(true);
+      setError('');
+      
+      // Strategy: Try to get posts from both endpoints and merge them
+      let allPosts = [];
+      let hasPosts = false;
+      
+      // Try the main blog posts endpoint first
+      try {
+        const response = await axiosSecure.get('/blog-posts');
+        
+        if (response.data.success && response.data.blogPosts) {
+          allPosts = [...allPosts, ...response.data.blogPosts];
+          hasPosts = true;
+        } else if (response.data.blogPosts) {
+          allPosts = [...allPosts, ...response.data.blogPosts];
+          hasPosts = true;
+        }
+              } catch {
+          // Silently handle error
+        }
+      
+      // Try the user's blog posts endpoint
+      try {
+        const userResponse = await axiosSecure.get('/my-blog-posts');
+        
+        if (userResponse.data.blogPosts && userResponse.data.blogPosts.length > 0) {
+          // Merge posts, avoiding duplicates by ID
+          const existingIds = new Set(allPosts.map(post => post._id));
+          const newPosts = userResponse.data.blogPosts.filter(post => !existingIds.has(post._id));
+          
+          if (newPosts.length > 0) {
+            allPosts = [...allPosts, ...newPosts];
+          }
+          
+          hasPosts = true;
+        }
+              } catch {
+          // Silently handle error
+        }
+      
+      if (hasPosts && allPosts.length > 0) {
+        // Fetch ratings for each post to calculate average ratings
+        const postsWithRatings = await Promise.all(
+          allPosts.map(async (post) => {
+            try {
+              const ratingResponse = await axiosSecure.get(`/ratings/post/${post._id}`);
+              if (ratingResponse.data.success && ratingResponse.data.ratings.length > 0) {
+                const averageRating = ratingResponse.data.ratings.reduce((sum, r) => sum + r.rating, 0) / ratingResponse.data.ratings.length;
+                return { ...post, averageRating, ratingCount: ratingResponse.data.ratings.length };
+              }
+              return { ...post, averageRating: 0, ratingCount: 0 };
+            } catch {
+              return { ...post, averageRating: 0, ratingCount: 0 };
+            }
+          })
+        );
+        
+        setArticles(postsWithRatings);
+        setFilteredArticles(postsWithRatings);
+      } else {
+        setError('No blog posts found');
+        setArticles([]);
+        setFilteredArticles([]);
+      }
+      
+    } catch (error) {
+      setError(`Failed to load blog posts: ${error.message}`);
+      setArticles([]);
+      setFilteredArticles([]);
+    } finally {
+      setLoading(false);
     }
-  ];
+  };
 
-  const categories = [
-    { name: 'all', label: 'All Articles', icon: FaGlobe },
-    { name: 'Mental Health', label: 'Mental Health', icon: FaHeart },
-    { name: 'Skills Development', label: 'Skills Development', icon: FaLightbulb },
-    { name: 'Environment', label: 'Environment', icon: FaStar },
-    { name: 'Youth Programs', label: 'Youth Programs', icon: FaUsers },
-    { name: 'Corporate', label: 'Corporate', icon: FaHandshake },
-    { name: 'Technology', label: 'Technology', icon: FaClock }
-  ];
+  // Get unique categories from tags
+  const getCategories = () => {
+    const allTags = [...new Set(articles.flatMap(article => article.tags || []))];
+    return [
+      { name: 'all', label: 'All Articles', icon: FaGlobe },
+      ...allTags.map(tag => ({
+        name: tag,
+        label: tag,
+        icon: FaTag
+      }))
+    ];
+  };
+
+  const categories = getCategories();
 
   useEffect(() => {
-    // Simulate API call
-    setTimeout(() => {
-      setArticles(sampleArticles);
-      setFilteredArticles(sampleArticles);
-      setLoading(false);
-    }, 1000);
+    fetchBlogPosts();
   }, []);
 
   useEffect(() => {
@@ -160,22 +143,23 @@ const Blog = () => {
   const filterArticles = () => {
     let filtered = articles.filter(article => {
       const matchesSearch = article.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                           article.excerpt.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                           (article.excerpt && article.excerpt.toLowerCase().includes(searchTerm.toLowerCase())) ||
+                           (article.content && article.content.toLowerCase().includes(searchTerm.toLowerCase())) ||
                            article.author.toLowerCase().includes(searchTerm.toLowerCase());
-      const matchesCategory = selectedCategory === 'all' || article.category === selectedCategory;
+      const matchesCategory = selectedCategory === 'all' || article.tags?.includes(selectedCategory);
       return matchesSearch && matchesCategory;
     });
 
     // Sort articles
     switch (sortBy) {
       case 'latest':
-        filtered.sort((a, b) => new Date(b.publishDate) - new Date(a.publishDate));
+        filtered.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
         break;
       case 'popular':
-        filtered.sort((a, b) => b.views - a.views);
+        filtered.sort((a, b) => (b.views || 0) - (a.views || 0));
         break;
       case 'most-liked':
-        filtered.sort((a, b) => b.likes - a.likes);
+        filtered.sort((a, b) => (b.likes || 0) - (a.likes || 0));
         break;
       default:
         break;
@@ -200,15 +184,16 @@ const Blog = () => {
     setSavedArticles(prev => {
       const newSet = new Set(prev);
       if (newSet.has(articleId)) {
-        newSet.delete(articleId);
-      } else {
         newSet.add(articleId);
+      } else {
+        newSet.delete(articleId);
       }
       return newSet;
     });
   };
 
   const formatDate = (dateString) => {
+    if (!dateString) return 'Unknown date';
     return new Date(dateString).toLocaleDateString('en-US', {
       year: 'numeric',
       month: 'long',
@@ -217,26 +202,61 @@ const Blog = () => {
   };
 
   if (loading) {
+    return <LoadingSpinner />;
+  }
+
+  if (error) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 flex justify-center items-center">
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 flex items-center justify-center">
         <div className="text-center">
-          <div className="loading loading-spinner loading-lg text-primary mb-4"></div>
-          <p className="text-gray-600 dark:text-gray-300">Loading articles...</p>
+          <div className="text-6xl mb-4">⚠️</div>
+          <h2 className="text-2xl font-bold text-gray-800 dark:text-white mb-4">
+            {error}
+          </h2>
+          <div className="space-y-3">
+            <button
+              onClick={fetchBlogPosts}
+              className="btn btn-primary"
+            >
+              Try Again
+            </button>
+
+          </div>
         </div>
       </div>
     );
   }
 
-  const featuredArticles = articles.filter(article => article.featured);
+  if (articles.length === 0) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 flex items-center justify-center">
+        <div className="text-center">
+          <div className="text-6xl mb-4">📝</div>
+          <h2 className="text-2xl font-bold text-gray-800 dark:text-white mb-4">
+            No Blog Posts Available
+          </h2>
+          <p className="text-gray-600 dark:text-gray-300 mb-6">
+            There are no blog posts to display at the moment.
+          </p>
+          <button
+            onClick={fetchBlogPosts}
+            className="btn btn-primary"
+          >
+            Refresh
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // Show first 2 articles as featured, or articles marked as featured
+  const featuredArticles = articles.filter(article => article.featured).slice(0, 2);
   const regularArticles = filteredArticles.filter(article => !article.featured);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
       {/* Hero Section */}
-      <motion.div
-        initial={{ opacity: 0, y: -20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.6 }}
+      <div
         className="bg-gradient-to-r from-primary to-secondary text-white py-16"
       >
         <div className="max-w-7xl mx-auto px-4 text-center">
@@ -261,14 +281,11 @@ const Blog = () => {
             </div>
           </div>
         </div>
-      </motion.div>
+      </div>
 
       <div className="max-w-7xl mx-auto px-4 py-8">
         {/* Search and Filter Section */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, delay: 0.2 }}
+        <div
           className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-6 mb-8"
         >
           <div className="flex flex-col lg:flex-row gap-4 items-center">
@@ -313,16 +330,25 @@ const Blog = () => {
                   <option value="most-liked">Most Liked</option>
                 </select>
               </div>
+              
+              {/* Refresh Button */}
+              <button
+                onClick={fetchBlogPosts}
+                className="btn btn-primary btn-outline"
+                title="Refresh blog posts"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                </svg>
+                Refresh
+              </button>
             </div>
           </div>
-        </motion.div>
+        </div>
 
         {/* Featured Articles */}
         {featuredArticles.length > 0 && (
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.4 }}
+          <div
             className="mb-12"
           >
             <h2 className="text-3xl font-bold text-gray-800 dark:text-white mb-6 flex items-center gap-2">
@@ -330,19 +356,16 @@ const Blog = () => {
               Featured Articles
             </h2>
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-              {featuredArticles.map((article, index) => (
-                <motion.div
-                  key={article.id}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.6, delay: 0.6 + index * 0.1 }}
+              {featuredArticles.map((article) => (
+                <div
+                  key={article._id}
                   className="group"
                 >
                   <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 overflow-hidden transform hover:-translate-y-2">
                     {/* Image */}
                     <div className="relative overflow-hidden">
                       <img
-                        src={article.image}
+                        src={article.image || 'https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?ixlib=rb-4.0.3&auto=format&fit=crop&w=2070&q=80'}
                         alt={article.title}
                         className="w-full h-64 object-cover group-hover:scale-110 transition-transform duration-300"
                       />
@@ -354,7 +377,7 @@ const Blog = () => {
                       </div>
                       <div className="absolute top-4 right-4">
                         <span className="badge badge-secondary badge-sm">
-                          {article.category}
+                          {article.tags?.[0] || 'General'}
                         </span>
                       </div>
                     </div>
@@ -362,17 +385,15 @@ const Blog = () => {
                     {/* Content */}
                     <div className="p-6">
                       <div className="flex items-center gap-2 mb-3">
-                        <img
-                          src={article.authorAvatar}
-                          alt={article.author}
-                          className="w-8 h-8 rounded-full"
-                        />
+                        <div className="w-8 h-8 rounded-full bg-gradient-to-br from-primary to-secondary flex items-center justify-center text-white font-bold">
+                          {article.author?.charAt(0)?.toUpperCase() || 'U'}
+                        </div>
                         <span className="text-sm text-gray-600 dark:text-gray-400">
                           {article.author}
                         </span>
                         <span className="text-gray-400">•</span>
                         <span className="text-sm text-gray-600 dark:text-gray-400">
-                          {formatDate(article.publishDate)}
+                          {formatDate(article.createdAt)}
                         </span>
                       </div>
 
@@ -380,7 +401,7 @@ const Blog = () => {
                         {article.title}
                       </h3>
                       <p className="text-gray-600 dark:text-gray-300 mb-4 line-clamp-3">
-                        {article.excerpt}
+                        {article.excerpt || article.content?.substring(0, 150) + '...'}
                       </p>
 
                       {/* Stats */}
@@ -388,15 +409,19 @@ const Blog = () => {
                         <div className="flex items-center gap-4 text-sm text-gray-500 dark:text-gray-400">
                           <div className="flex items-center gap-1">
                             <FaEye />
-                            <span>{article.views}</span>
+                            <span>{article.views || 0}</span>
                           </div>
                           <div className="flex items-center gap-1">
-                            <FaComments />
-                            <span>{article.comments}</span>
+                            <FaHeart />
+                            <span>{article.likes || 0}</span>
                           </div>
                           <div className="flex items-center gap-1">
                             <FaClock />
-                            <span>{article.readTime}</span>
+                            <span>{Math.ceil((article.content?.length || 0) / 200)} min read</span>
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <FaStar className="text-yellow-400" />
+                            <span>{article.averageRating ? article.averageRating.toFixed(1) : '0.0'}</span>
                           </div>
                         </div>
                       </div>
@@ -405,23 +430,23 @@ const Blog = () => {
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2">
                           <button
-                            onClick={() => handleLike(article.id)}
-                            className={`btn btn-circle btn-sm ${likedArticles.has(article.id) ? 'btn-primary' : 'btn-outline'}`}
+                            onClick={() => handleLike(article._id)}
+                            className={`btn btn-circle btn-sm ${likedArticles.has(article._id) ? 'btn-primary' : 'btn-outline'}`}
                           >
-                            <FaHeart className={likedArticles.has(article.id) ? 'text-white' : ''} />
+                            <FaHeart className={likedArticles.has(article._id) ? 'text-white' : ''} />
                           </button>
                           <button
-                            onClick={() => handleSave(article.id)}
-                            className={`btn btn-circle btn-sm ${savedArticles.has(article.id) ? 'btn-secondary' : 'btn-outline'}`}
+                            onClick={() => handleSave(article._id)}
+                            className={`btn btn-circle btn-sm ${savedArticles.has(article._id) ? 'btn-secondary' : 'btn-outline'}`}
                           >
-                            <FaBookmark className={savedArticles.has(article.id) ? 'text-white' : ''} />
+                            <FaBookmark className={savedArticles.has(article._id) ? 'text-white' : ''} />
                           </button>
                           <button className="btn btn-circle btn-sm btn-outline">
                             <FaShareAlt />
                           </button>
                         </div>
                         <Link
-                          to={`/blog/${article.id}`}
+                          to={`/blog/${article._id}`}
                           className="btn btn-primary btn-sm gap-2"
                         >
                           Read More
@@ -430,17 +455,14 @@ const Blog = () => {
                       </div>
                     </div>
                   </div>
-                </motion.div>
+                </div>
               ))}
             </div>
-          </motion.div>
+          </div>
         )}
 
         {/* Regular Articles */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, delay: 0.6 }}
+        <div
         >
           <h2 className="text-3xl font-bold text-gray-800 dark:text-white mb-6 flex items-center gap-2">
             <FaGlobe className="text-primary" />
@@ -470,25 +492,22 @@ const Blog = () => {
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {regularArticles.map((article, index) => (
-                <motion.div
-                  key={article.id}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.6, delay: 0.8 + index * 0.1 }}
+              {regularArticles.map((article) => (
+                <div
+                  key={article._id}
                   className="group"
                 >
                   <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 overflow-hidden transform hover:-translate-y-1">
                     {/* Image */}
                     <div className="relative overflow-hidden">
                       <img
-                        src={article.image}
+                        src={article.image || 'https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?ixlib=rb-4.0.3&auto=format&fit=crop&w=2070&q=80'}
                         alt={article.title}
                         className="w-full h-48 object-cover group-hover:scale-110 transition-transform duration-300"
                       />
                       <div className="absolute top-3 left-3">
                         <span className="badge badge-primary badge-sm">
-                          {article.category}
+                          {article.tags?.[0] || 'General'}
                         </span>
                       </div>
                     </div>
@@ -496,17 +515,15 @@ const Blog = () => {
                     {/* Content */}
                     <div className="p-5">
                       <div className="flex items-center gap-2 mb-3">
-                        <img
-                          src={article.authorAvatar}
-                          alt={article.author}
-                          className="w-6 h-6 rounded-full"
-                        />
+                        <div className="w-6 h-6 rounded-full bg-gradient-to-br from-primary to-secondary flex items-center justify-center text-white text-xs font-bold">
+                          {article.author?.charAt(0)?.toUpperCase() || 'U'}
+                        </div>
                         <span className="text-xs text-gray-600 dark:text-gray-400">
                           {article.author}
                         </span>
                         <span className="text-gray-400">•</span>
                         <span className="text-xs text-gray-600 dark:text-gray-400">
-                          {formatDate(article.publishDate)}
+                          {formatDate(article.createdAt)}
                         </span>
                       </div>
 
@@ -514,7 +531,7 @@ const Blog = () => {
                         {article.title}
                       </h3>
                       <p className="text-sm text-gray-600 dark:text-gray-300 mb-3 line-clamp-2">
-                        {article.excerpt}
+                        {article.excerpt || article.content?.substring(0, 100) + '...'}
                       </p>
 
                       {/* Stats */}
@@ -522,15 +539,19 @@ const Blog = () => {
                         <div className="flex items-center gap-3 text-xs text-gray-500 dark:text-gray-400">
                           <div className="flex items-center gap-1">
                             <FaEye />
-                            <span>{article.views}</span>
+                            <span>{article.views || 0}</span>
                           </div>
                           <div className="flex items-center gap-1">
-                            <FaComments />
-                            <span>{article.comments}</span>
+                            <FaHeart />
+                            <span>{article.likes || 0}</span>
                           </div>
                           <div className="flex items-center gap-1">
                             <FaClock />
-                            <span>{article.readTime}</span>
+                            <span>{Math.ceil((article.content?.length || 0) / 200)} min read</span>
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <FaStar className="text-yellow-400" />
+                            <span>{article.averageRating ? article.averageRating.toFixed(1) : '0.0'}</span>
                           </div>
                         </div>
                       </div>
@@ -539,20 +560,20 @@ const Blog = () => {
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-1">
                           <button
-                            onClick={() => handleLike(article.id)}
-                            className={`btn btn-circle btn-xs ${likedArticles.has(article.id) ? 'btn-primary' : 'btn-outline'}`}
+                            onClick={() => handleLike(article._id)}
+                            className={`btn btn-circle btn-xs ${likedArticles.has(article._id) ? 'btn-primary' : 'btn-outline'}`}
                           >
-                            <FaHeart className={likedArticles.has(article.id) ? 'text-white' : ''} />
+                            <FaHeart className={likedArticles.has(article._id) ? 'text-white' : ''} />
                           </button>
                           <button
-                            onClick={() => handleSave(article.id)}
-                            className={`btn btn-circle btn-xs ${savedArticles.has(article.id) ? 'btn-secondary' : 'btn-outline'}`}
+                            onClick={() => handleSave(article._id)}
+                            className={`btn btn-circle btn-xs ${savedArticles.has(article._id) ? 'btn-secondary' : 'btn-outline'}`}
                           >
-                            <FaBookmark className={savedArticles.has(article.id) ? 'text-white' : ''} />
+                            <FaBookmark className={savedArticles.has(article._id) ? 'text-white' : ''} />
                           </button>
                         </div>
                         <Link
-                          to={`/blog/${article.id}`}
+                          to={`/blog/${article._id}`}
                           className="btn btn-primary btn-xs gap-1"
                         >
                           Read
@@ -561,11 +582,11 @@ const Blog = () => {
                       </div>
                     </div>
                   </div>
-                </motion.div>
+                </div>
               ))}
             </div>
           )}
-        </motion.div>
+        </div>
       </div>
     </div>
   );

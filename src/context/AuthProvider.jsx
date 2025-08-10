@@ -8,7 +8,7 @@ import {
   signInWithPopup
 } from 'firebase/auth';
 import auth from '../firebase/firebase.config';
-import axios from 'axios';
+
 import Swal from 'sweetalert2';
 
 export const AuthContext = createContext(null);
@@ -37,7 +37,6 @@ const getStoredRole = () => {
     
     return roleData;
   } catch (error) {
-    console.error('Error reading stored role:', error);
     return null;
   }
 };
@@ -47,7 +46,7 @@ const setStoredRole = (role) => {
     localStorage.setItem(ROLE_STORAGE_KEY, role);
     localStorage.setItem(ROLE_TIMESTAMP_KEY, Date.now().toString());
   } catch (error) {
-    console.error('Error storing role:', error);
+    // Silently handle error
   }
 };
 
@@ -56,7 +55,7 @@ const clearStoredRole = () => {
     localStorage.removeItem(ROLE_STORAGE_KEY);
     localStorage.removeItem(ROLE_TIMESTAMP_KEY);
   } catch (error) {
-    console.error('Error clearing stored role:', error);
+    // Silently handle error
   }
 };
 
@@ -92,17 +91,10 @@ const AuthProvider = ({ children }) => {
     return signOut(auth);
   };
 
-  // Fetch user role from server
+  // Fetch user role from server - DISABLED since endpoint doesn't exist
   const fetchUserRole = async (userEmail, token) => {
-    try {
-      const baseURL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000';
-      const roleRes = await axios.get(`${baseURL}/users/role/${encodeURIComponent(userEmail)}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      return roleRes?.data?.role || null;
-    } catch (error) {
-      return null;
-    }
+    // Return default role since backend endpoint doesn't exist
+    return 'volunteer';
   };
 
   // Manual role refresh function - DISABLED to prevent role changes
@@ -131,14 +123,6 @@ const AuthProvider = ({ children }) => {
       
       if (currentUser?.email) {
         try {
-          const userData = { email: currentUser.email };
-          const baseURL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000';
-          
-          // Get JWT token
-          const jwtRes = await axios.post(`${baseURL}/jwt`, userData);
-          const token = jwtRes.data.token;
-          localStorage.setItem("token", token);
-
           // Check if we have a valid stored role
           const storedRole = getStoredRole();
           
@@ -147,29 +131,12 @@ const AuthProvider = ({ children }) => {
             setRole(storedRole);
             setRoleLoading(false);
           } else {
-            // No stored role, fetch from server only once and LOCK IT
+            // No stored role, set default role
             setRoleLoading(true);
-            const freshRole = await fetchUserRole(currentUser.email, token);
-            const resolvedRole = freshRole || 'volunteer';
-            setRole(resolvedRole);
-            setStoredRole(resolvedRole); // LOCK THIS ROLE FOREVER
+            const defaultRole = 'volunteer';
+            setRole(defaultRole);
+            setStoredRole(defaultRole); // LOCK THIS ROLE FOREVER
             setRoleLoading(false);
-          }
-
-          // Upsert user WITHOUT role to avoid overwriting server role
-          try {
-            await axios.post(
-              `${baseURL}/users`,
-              {
-                name: currentUser.displayName || 'User',
-                email: currentUser.email,
-              },
-              {
-                headers: { Authorization: `Bearer ${token}` },
-              }
-            );
-          } catch (error) {
-            // Silently handle upsert errors
           }
         } catch (error) {
           setRoleLoading(false);

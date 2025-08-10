@@ -25,12 +25,6 @@ const UpdatePost = () => {
   useEffect(() => {
     const fetchPost = async () => {
       try {
-        const token = localStorage.getItem('token');
-        if (!token) {
-          navigate('/login');
-          return;
-        }
-
         const res = await axiosSecure.get(`/posts/${id}`);
         if (res.status !== 200) {
           throw new Error(res.status === 404 ? 'Post not found' : 'Failed to fetch post');
@@ -48,7 +42,7 @@ const UpdatePost = () => {
       } catch (err) {
         setError(err.message);
         Swal.fire('Error', err.message, 'error');
-        navigate('/dashboard/manage-posts');
+        navigate('/dashboard/my-posts');
       } finally {
         setLoading(false);
       }
@@ -57,7 +51,7 @@ const UpdatePost = () => {
     if (user) {
       fetchPost();
     }
-  }, [id, user, navigate]);
+  }, [id, user, navigate, axiosSecure]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -76,21 +70,14 @@ const UpdatePost = () => {
     };
 
     try {
-      const token = localStorage.getItem('token');
-      if (!token) {
-        navigate('/login');
-        return;
-      }
-
       const res = await axiosSecure.put(`/posts/${id}`, updatedPost);
       if (res.status !== 200) {
         throw new Error('Update failed');
       }
 
       Swal.fire('Updated!', 'Your post has been updated.', 'success');
-      navigate('/dashboard/manage-posts');
+      navigate('/dashboard/my-posts');
     } catch (err) {
-      console.error('Update error:', err);
       Swal.fire('Error!', err.message || 'Something went wrong.', 'error');
     }
   };
@@ -100,9 +87,24 @@ const UpdatePost = () => {
   if (!post) return <p className="text-red-500 text-center py-10">Post not found.</p>;
 
   return (
-    <div className="max-w-4xl mx-auto p-6">
-      <h2 className="text-3xl font-bold mb-6 text-center">Update Volunteer Post</h2>
-      <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-4">
+    <div className="max-w-4xl mx-auto">
+      <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl overflow-hidden">
+        <div className="p-6 border-b border-gray-200 dark:border-gray-700">
+          <div className="flex items-center justify-between">
+            <h2 className="text-2xl font-bold text-gray-800 dark:text-white">
+              Update Volunteer Post
+            </h2>
+            <button
+              onClick={() => navigate('/dashboard/my-posts')}
+              className="btn btn-outline btn-primary"
+            >
+              Back to My Posts
+            </button>
+          </div>
+        </div>
+        
+        <div className="p-6">
+          <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <input
           type="text"
           name="title"
@@ -186,6 +188,8 @@ const UpdatePost = () => {
           Update Post
         </button>
       </form>
+        </div>
+      </div>
     </div>
   );
 };

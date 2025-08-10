@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { motion } from 'framer-motion';
 import { 
   FaArrowLeft, 
   FaCalendarAlt, 
@@ -24,9 +23,14 @@ import {
   FaLinkedin,
   FaWhatsapp
 } from 'react-icons/fa';
+import useAxiosSecure from '../hooks/useAxiosSecure';
+import LoadingSpinner from '../components/LoadingSpinner';
+import RatingSystem from '../components/RatingSystem';
 
 const BlogDetails = () => {
   const { id } = useParams();
+  const axiosSecure = useAxiosSecure();
+  
   const [article, setArticle] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -34,100 +38,119 @@ const BlogDetails = () => {
   const [isSaved, setIsSaved] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
 
-  // Sample blog data - in real app, this would come from API
-  const sampleArticles = [
-    {
-      id: 1,
-      title: "The Impact of Community Volunteering on Mental Health",
-      excerpt: "Discover how volunteering can improve your mental well-being and create lasting positive changes in your life and community.",
-      content: `
-        <p class="mb-6 text-lg leading-relaxed">
-          Volunteering has been shown to have numerous mental health benefits, including reduced stress, increased happiness, and a sense of purpose. This article explores the science behind these benefits and provides practical tips for getting started.
-        </p>
+  // Fetch blog post by ID
+  const fetchBlogPost = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      // Try the main blog posts endpoint first
+      try {
+        const response = await axiosSecure.get(`/blog-posts/${id}`);
         
-        <h2 class="text-2xl font-bold text-gray-800 dark:text-white mb-4">The Science Behind Volunteering and Mental Health</h2>
-        <p class="mb-6 text-gray-700 dark:text-gray-300 leading-relaxed">
-          Research has consistently shown that volunteering can have profound effects on mental health. Studies indicate that regular volunteers experience lower levels of depression, reduced stress hormones, and increased production of endorphins - the body's natural mood elevators.
-        </p>
+        if (response.data.success && response.data.blogPost) {
+          const post = response.data.blogPost;
+          // Fetch rating data for this post
+          try {
+            const ratingResponse = await axiosSecure.get(`/ratings/post/${post._id}`);
+            if (ratingResponse.data.success && ratingResponse.data.ratings.length > 0) {
+              const averageRating = ratingResponse.data.ratings.reduce((sum, r) => sum + r.rating, 0) / ratingResponse.data.ratings.length;
+              setArticle({ ...post, averageRating, ratingCount: ratingResponse.data.ratings.length });
+            } else {
+              setArticle({ ...post, averageRating: 0, ratingCount: 0 });
+            }
+          } catch {
+            setArticle({ ...post, averageRating: 0, ratingCount: 0 });
+          }
+          return;
+        } else if (response.data.blogPost) {
+          const post = response.data.blogPost;
+          // Fetch rating data for this post
+          try {
+            const ratingResponse = await axiosSecure.get(`/ratings/post/${post._id}`);
+            if (ratingResponse.data.success && ratingResponse.data.ratings.length > 0) {
+              const averageRating = ratingResponse.data.ratings.reduce((sum, r) => sum + r.rating, 0) / ratingResponse.data.ratings.length;
+              setArticle({ ...post, averageRating, ratingCount: ratingResponse.data.ratings.length });
+            } else {
+              setArticle({ ...post, averageRating: 0, ratingCount: 0 });
+            }
+          } catch {
+            setArticle({ ...post, averageRating: 0, ratingCount: 0 });
+          }
+          return;
+        } else if (response.data) {
+          // If the response is the blog post directly
+          const post = response.data;
+          // Fetch rating data for this post
+          try {
+            const ratingResponse = await axiosSecure.get(`/ratings/post/${post._id}`);
+            if (ratingResponse.data.success && ratingResponse.data.ratings.length > 0) {
+              const averageRating = ratingResponse.data.ratings.reduce((sum, r) => sum + r.rating, 0) / ratingResponse.data.ratings.length;
+              setArticle({ ...post, averageRating, ratingCount: ratingResponse.data.ratings.length });
+            } else {
+              setArticle({ ...post, averageRating: 0, ratingCount: 0 });
+            }
+          } catch {
+            setArticle({ ...post, averageRating: 0, ratingCount: 0 });
+          }
+          return;
+        }
+      } catch {
+        // Silently handle error
+      }
+      
+      // If main endpoint failed, try to find the post in user's blog posts
+      try {
+        const userResponse = await axiosSecure.get('/my-blog-posts');
         
-        <h3 class="text-xl font-semibold text-gray-800 dark:text-white mb-3">Key Benefits:</h3>
-        <ul class="list-disc list-inside mb-6 space-y-2 text-gray-700 dark:text-gray-300">
-          <li>Reduced stress and anxiety levels</li>
-          <li>Increased sense of purpose and meaning</li>
-          <li>Improved self-esteem and confidence</li>
-          <li>Enhanced social connections</li>
-          <li>Better overall life satisfaction</li>
-        </ul>
-        
-        <h2 class="text-2xl font-bold text-gray-800 dark:text-white mb-4">Getting Started with Volunteering</h2>
-        <p class="mb-6 text-gray-700 dark:text-gray-300 leading-relaxed">
-          Starting your volunteering journey doesn't have to be overwhelming. Begin by identifying causes that resonate with you personally. Whether it's environmental conservation, animal welfare, or community development, choose something that aligns with your values and interests.
-        </p>
-        
-        <div class="bg-blue-50 dark:bg-blue-900/20 rounded-xl p-6 mb-6">
-          <h3 class="text-lg font-semibold text-blue-800 dark:text-blue-200 mb-3">Pro Tip:</h3>
-          <p class="text-blue-700 dark:text-blue-300">
-            Start small with just a few hours per month. This allows you to gradually build your commitment and find the right balance for your lifestyle.
-          </p>
-        </div>
-        
-        <h2 class="text-2xl font-bold text-gray-800 dark:text-white mb-4">Finding the Right Opportunity</h2>
-        <p class="mb-6 text-gray-700 dark:text-gray-300 leading-relaxed">
-          There are countless ways to volunteer, from local community centers to international organizations. Consider your skills, interests, and available time when choosing an opportunity. Many organizations offer flexible scheduling and remote volunteering options.
-        </p>
-        
-        <h3 class="text-xl font-semibold text-gray-800 dark:text-white mb-3">Popular Volunteering Areas:</h3>
-        <ul class="list-disc list-inside mb-6 space-y-2 text-gray-700 dark:text-gray-300">
-          <li>Environmental conservation and cleanup</li>
-          <li>Animal shelters and wildlife rehabilitation</li>
-          <li>Community food banks and shelters</li>
-          <li>Educational programs and tutoring</li>
-          <li>Healthcare and medical support</li>
-          <li>Disaster relief and emergency response</li>
-        </ul>
-        
-        <h2 class="text-2xl font-bold text-gray-800 dark:text-white mb-4">Making the Most of Your Experience</h2>
-        <p class="mb-6 text-gray-700 dark:text-gray-300 leading-relaxed">
-          To maximize the mental health benefits of volunteering, approach it with an open mind and positive attitude. Focus on the impact you're making rather than just the time you're spending. Build relationships with other volunteers and the people you're helping.
-        </p>
-        
-        <div class="bg-green-50 dark:bg-green-900/20 rounded-xl p-6 mb-6">
-          <h3 class="text-lg font-semibold text-green-800 dark:text-green-200 mb-3">Success Story:</h3>
-          <p class="text-green-700 dark:text-green-300">
-            "After six months of volunteering at a local animal shelter, I noticed a significant improvement in my mood and overall outlook on life. The connection with animals and other volunteers gave me a sense of community I didn't realize I was missing." - Sarah M.
-          </p>
-        </div>
-        
-        <h2 class="text-2xl font-bold text-gray-800 dark:text-white mb-4">Conclusion</h2>
-        <p class="mb-6 text-gray-700 dark:text-gray-300 leading-relaxed">
-          Volunteering offers a unique combination of personal growth, community impact, and mental health benefits. By giving your time and energy to others, you're also investing in your own well-being. Start your volunteering journey today and discover the positive changes it can bring to your life.
-        </p>
-      `,
-      author: "Dr. Sarah Johnson",
-      authorAvatar: "https://images.unsplash.com/photo-1494790108755-2616b612b786?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=2070&q=80",
-      authorBio: "Dr. Sarah Johnson is a licensed clinical psychologist with over 15 years of experience in mental health research and community psychology. She specializes in the intersection of community engagement and mental well-being.",
-      category: "Mental Health",
-      image: "https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=2070&q=80",
-      publishDate: "2024-01-15",
-      readTime: "5 min read",
-      views: 1247,
-      likes: 89,
-      comments: 23,
-      featured: true
+        if (userResponse.data.blogPosts && userResponse.data.blogPosts.length > 0) {
+          const foundPost = userResponse.data.blogPosts.find(post => post._id === id);
+          
+          if (foundPost) {
+            // Fetch rating data for this post
+            try {
+              const ratingResponse = await axiosSecure.get(`/ratings/post/${foundPost._id}`);
+              if (ratingResponse.data.success && ratingResponse.data.ratings.length > 0) {
+                const averageRating = ratingResponse.data.ratings.reduce((sum, r) => sum + r.rating, 0) / ratingResponse.data.ratings.length;
+                setArticle({ ...foundPost, averageRating, ratingCount: ratingResponse.data.ratings.length });
+              } else {
+                setArticle({ ...foundPost, averageRating: 0, ratingCount: 0 });
+              }
+            } catch {
+              setArticle({ ...foundPost, averageRating: 0, ratingCount: 0 });
+            }
+            return;
+          }
+        }
+      } catch {
+        // Silently handle error
+      }
+      
+      // If we reach here, the post was not found
+      setError('Blog post not found');
+      
+    } catch (error) {
+      if (error.response?.status === 404) {
+        setError('Blog post not found');
+      } else if (error.code === 'ERR_NETWORK') {
+        setError('Cannot connect to backend server. Please check if your backend is running.');
+      } else {
+        setError('Failed to load blog post. Please try again later.');
+      }
+    } finally {
+      setLoading(false);
     }
-  ];
+  };
+
+
 
   useEffect(() => {
-    // Simulate API call
-    setTimeout(() => {
-      const foundArticle = sampleArticles.find(article => article.id === parseInt(id));
-      if (foundArticle) {
-        setArticle(foundArticle);
-      } else {
-        setError('Article not found');
-      }
+    if (id) {
+      fetchBlogPost();
+    } else {
+      setError('No blog post ID provided');
       setLoading(false);
-    }, 1000);
+    }
   }, [id]);
 
   const handleLike = () => {
@@ -143,6 +166,7 @@ const BlogDetails = () => {
   };
 
   const formatDate = (dateString) => {
+    if (!dateString) return 'Unknown date';
     return new Date(dateString).toLocaleDateString('en-US', {
       year: 'numeric',
       month: 'long',
@@ -153,10 +177,7 @@ const BlogDetails = () => {
   if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 flex justify-center items-center">
-        <div className="text-center">
-          <div className="loading loading-spinner loading-lg text-primary mb-4"></div>
-          <p className="text-gray-600 dark:text-gray-300">Loading article...</p>
-        </div>
+        <LoadingSpinner />
       </div>
     );
   }
@@ -170,18 +191,19 @@ const BlogDetails = () => {
             Article Not Found
           </h3>
           <p className="text-gray-600 dark:text-gray-300 mb-6">
-            The article you're looking for doesn't exist or has been removed.
+            {error || 'The article you\'re looking for doesn\'t exist or has been removed.'}
           </p>
           <div className="flex flex-col sm:flex-row gap-3 justify-center">
             <Link to="/blog" className="btn btn-primary">
               Back to Blog
             </Link>
             <button 
-              onClick={() => window.location.reload()} 
+              onClick={() => fetchBlogPost()} 
               className="btn btn-outline"
             >
               Try Again
             </button>
+
           </div>
         </div>
       </div>
@@ -190,48 +212,36 @@ const BlogDetails = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ duration: 0.5 }}
-        className="max-w-4xl mx-auto px-4 py-8"
-      >
+      <div className="max-w-4xl mx-auto px-4 py-8">
         {/* Back Button */}
-        <motion.div
-          initial={{ opacity: 0, x: -20 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ duration: 0.6 }}
-        >
+        <div className="mb-6">
           <Link 
             to="/blog" 
-            className="inline-flex items-center text-primary hover:text-primary-dark dark:text-primary dark:hover:text-primary-light mb-6 transition-colors group"
+            className="inline-flex items-center text-primary hover:text-primary-dark dark:text-primary dark:hover:text-primary-light transition-colors group"
           >
             <FaArrowLeft className="mr-2 group-hover:-translate-x-1 transition-transform" />
             <span className="font-medium">Back to Blog</span>
           </Link>
-        </motion.div>
+        </div>
 
         {/* Main Article */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, delay: 0.2 }}
-          className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl overflow-hidden"
-        >
+        <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl overflow-hidden">
           {/* Article Header */}
           <div className="relative">
-            <img 
-              src={article.image}
-              alt={article.title}
-              className="w-full h-64 md:h-96 object-cover"
-            />
+            {article.image && (
+              <img 
+                src={article.image}
+                alt={article.title}
+                className="w-full h-64 md:h-96 object-cover"
+              />
+            )}
             <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent"></div>
             
             {/* Category Badge */}
             <div className="absolute top-6 left-6">
               <span className="badge badge-primary badge-lg gap-2">
                 <FaTag />
-                {article.category}
+                {article.tags?.[0] || 'General'}
               </span>
             </div>
 
@@ -257,11 +267,7 @@ const BlogDetails = () => {
                   <FaShareAlt />
                 </button>
                 {shareOpen && (
-                  <motion.div
-                    initial={{ opacity: 0, y: 10, scale: 0.95 }}
-                    animate={{ opacity: 1, y: 0, scale: 1 }}
-                    className="absolute right-0 bottom-full mb-3 bg-white dark:bg-gray-700 rounded-xl shadow-2xl p-4 w-56 z-10"
-                  >
+                  <div className="absolute right-0 bottom-full mb-3 bg-white dark:bg-gray-700 rounded-xl shadow-2xl p-4 w-56 z-10">
                     <p className="text-sm font-medium mb-3 text-gray-800 dark:text-white">Share this article:</p>
                     <div className="flex justify-center gap-3">
                       <button className="btn btn-circle btn-sm bg-blue-600 hover:bg-blue-700 text-white">
@@ -277,7 +283,7 @@ const BlogDetails = () => {
                         <FaWhatsapp />
                       </button>
                     </div>
-                  </motion.div>
+                  </div>
                 )}
               </div>
             </div>
@@ -294,11 +300,11 @@ const BlogDetails = () => {
                 </div>
                 <div className="flex items-center gap-2">
                   <FaCalendarAlt className="text-primary-light" />
-                  <span className="font-medium">{formatDate(article.publishDate)}</span>
+                  <span className="font-medium">{formatDate(article.createdAt)}</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <FaClock className="text-primary-light" />
-                  <span className="font-medium">{article.readTime}</span>
+                  <span className="font-medium">{Math.ceil((article.content?.length || 0) / 200)} min read</span>
                 </div>
               </div>
             </div>
@@ -311,22 +317,28 @@ const BlogDetails = () => {
               <div className="flex items-center gap-6 text-sm text-gray-600 dark:text-gray-400">
                 <div className="flex items-center gap-2">
                   <FaEye />
-                  <span>{article.views} views</span>
+                  <span>{article.views || 0} views</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <FaComments />
-                  <span>{article.comments} comments</span>
+                  <span>{article.comments || 0} comments</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <FaHeart />
-                  <span>{article.likes} likes</span>
+                  <span>{article.likes || 0} likes</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <FaStar className="text-yellow-400" />
+                  <span>{article.averageRating ? article.averageRating.toFixed(1) : '0.0'} rating</span>
                 </div>
               </div>
             </div>
 
             {/* Article Body */}
             <div className="prose prose-lg max-w-none dark:prose-invert">
-              <div dangerouslySetInnerHTML={{ __html: article.content }} />
+              <div className="whitespace-pre-wrap text-gray-700 dark:text-gray-300 leading-relaxed">
+                {article.content}
+              </div>
             </div>
 
             {/* Author Section */}
@@ -336,114 +348,67 @@ const BlogDetails = () => {
                 About the Author
               </h3>
               <div className="flex items-start gap-4">
-                <img
-                  src={article.authorAvatar}
-                  alt={article.author}
-                  className="w-16 h-16 rounded-full"
-                />
+                <div className="w-16 h-16 rounded-full bg-gradient-to-br from-primary to-secondary flex items-center justify-center text-white font-bold text-xl">
+                  {article.author?.charAt(0)?.toUpperCase() || 'U'}
+                </div>
                 <div>
                   <h4 className="text-lg font-semibold text-gray-800 dark:text-white mb-2">
                     {article.author}
                   </h4>
                   <p className="text-gray-600 dark:text-gray-300 leading-relaxed">
-                    {article.authorBio}
+                    A passionate volunteer and community advocate who believes in making a difference through service and engagement.
                   </p>
                 </div>
               </div>
             </div>
 
             {/* Tags */}
-            <div className="mt-8 pt-6 border-t border-gray-200 dark:border-gray-700">
-              <h4 className="text-lg font-semibold text-gray-800 dark:text-white mb-3">Tags:</h4>
-              <div className="flex flex-wrap gap-2">
-                <span className="badge badge-outline badge-primary">{article.category}</span>
-                <span className="badge badge-outline">Volunteering</span>
-                <span className="badge badge-outline">Mental Health</span>
-                <span className="badge badge-outline">Community</span>
-                <span className="badge badge-outline">Wellness</span>
+            {article.tags && article.tags.length > 0 && (
+              <div className="mt-8 pt-6 border-t border-gray-200 dark:border-gray-700">
+                <h4 className="text-lg font-semibold text-gray-800 dark:text-white mb-3">Tags:</h4>
+                <div className="flex flex-wrap gap-2">
+                  {article.tags.map((tag, index) => (
+                    <span key={index} className="badge badge-outline badge-primary">{tag}</span>
+                  ))}
+                </div>
               </div>
-            </div>
+            )}
           </div>
-        </motion.div>
+        </div>
 
-        {/* Related Articles */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, delay: 0.4 }}
-          className="mt-16"
-        >
+        {/* Rating System */}
+        <div className="mt-8">
+          <RatingSystem 
+            postId={article._id} 
+            onRatingUpdate={() => {
+              // Refresh the article data to show updated ratings
+              fetchBlogPost();
+            }}
+          />
+        </div>
+
+        {/* Related Articles Section - You can implement this later */}
+        <div className="mt-16">
           <h2 className="text-3xl font-bold text-gray-800 dark:text-white mb-8 flex items-center gap-2">
             <FaStar className="text-primary" />
-            Related Articles
+            More Articles
           </h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {/* Sample related articles */}
-            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg overflow-hidden hover:shadow-xl transition-shadow">
-              <img 
-                src="https://images.unsplash.com/photo-1522202176988-66273c2fd55f?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=2070&q=80" 
-                alt="Related article"
-                className="w-full h-48 object-cover"
-              />
-              <div className="p-5">
-                <span className="badge badge-primary badge-sm mb-3">Skills Development</span>
-                <h3 className="font-semibold text-gray-800 dark:text-white mb-2">
-                  10 Essential Skills Every Volunteer Should Develop
-                </h3>
-                <p className="text-sm text-gray-600 dark:text-gray-300 mb-3 line-clamp-2">
-                  From communication to problem-solving, learn the key skills that will make you an effective volunteer.
-                </p>
-                <Link to="/blog/2" className="btn btn-primary btn-sm gap-2">
-                  Read More
-                  <FaArrowLeft className="rotate-180" />
-                </Link>
-              </div>
-            </div>
-            
-            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg overflow-hidden hover:shadow-xl transition-shadow">
-              <img 
-                src="https://images.unsplash.com/photo-1441974231531-c6227db76b6e?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=2070&q=80" 
-                alt="Related article"
-                className="w-full h-48 object-cover"
-              />
-              <div className="p-5">
-                <span className="badge badge-secondary badge-sm mb-3">Environment</span>
-                <h3 className="font-semibold text-gray-800 dark:text-white mb-2">
-                  Environmental Volunteering: Making a Difference
-                </h3>
-                <p className="text-sm text-gray-600 dark:text-gray-300 mb-3 line-clamp-2">
-                  Explore various ways to contribute to environmental conservation through volunteering.
-                </p>
-                <Link to="/blog/3" className="btn btn-primary btn-sm gap-2">
-                  Read More
-                  <FaArrowLeft className="rotate-180" />
-                </Link>
-              </div>
-            </div>
-            
-            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg overflow-hidden hover:shadow-xl transition-shadow">
-              <img 
-                src="https://images.unsplash.com/photo-1529626455594-4ff0802cfb7e?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=2070&q=80" 
-                alt="Related article"
-                className="w-full h-48 object-cover"
-              />
-              <div className="p-5">
-                <span className="badge badge-accent badge-sm mb-3">Youth Programs</span>
-                <h3 className="font-semibold text-gray-800 dark:text-white mb-2">
-                  Youth Volunteering: Empowering the Next Generation
-                </h3>
-                <p className="text-sm text-gray-600 dark:text-gray-300 mb-3 line-clamp-2">
-                  Discover how young people are making a difference through volunteering.
-                </p>
-                <Link to="/blog/4" className="btn btn-primary btn-sm gap-2">
-                  Read More
-                  <FaArrowLeft className="rotate-180" />
-                </Link>
-              </div>
+          <div className="text-center py-12">
+            <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-12 max-w-md mx-auto">
+              <div className="text-6xl mb-4">📚</div>
+              <h3 className="text-xl font-bold text-gray-800 dark:text-white mb-2">
+                Explore More Content
+              </h3>
+              <p className="text-gray-600 dark:text-gray-300 mb-6">
+                Discover more inspiring stories and helpful tips in our blog
+              </p>
+              <Link to="/blog" className="btn btn-primary">
+                Browse All Articles
+              </Link>
             </div>
           </div>
-        </motion.div>
-      </motion.div>
+        </div>
+      </div>
     </div>
   );
 };

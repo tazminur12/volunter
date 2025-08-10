@@ -8,7 +8,9 @@ import AllPosts from "../pages/AllPosts";
 import AddPost from "../pages/AddPost";
 import ManagePosts from "../pages/ManagePosts";
 import DashboardOverview from "../pages/Dashboard/DashboardOverview";
+import BlogManagement from "../pages/Dashboard/BlogManagement";
 import Profile from "../pages/Profile";
+import UpdatePost from "../pages/UpdatePost";
 // Dashboard components - simplified structure
 import PostDetails from "../pages/PostDetails"; import BeVolunteer from "../pages/BeVolunteer"; // If implemented
 import ErrorPage from "../pages/ErrorPage";
@@ -97,6 +99,8 @@ const router = createBrowserRouter([
       { path: "profile", element: <Profile /> },
       { path: "add-post", element: <AddPost /> },
       { path: "my-posts", element: <ManagePosts /> },
+      { path: "update-post/:id", element: <UpdatePost /> },
+      { path: "blog-management", element: <BlogManagement /> },
       // Simplified dashboard - no role-based sections
     ],
   },
