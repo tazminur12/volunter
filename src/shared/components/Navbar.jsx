@@ -134,6 +134,21 @@ const Navbar = () => {
           Blog
         </NavLink>
       </motion.li>
+      <motion.li variants={navLinkVariants}>
+        <NavLink 
+          to="/events" 
+          onClick={() => setMobileMenuOpen(false)}
+          className={({ isActive }) => 
+            `px-4 py-2 rounded-lg font-medium transition-all duration-300 ${
+              isActive 
+                ? 'text-warning bg-warning/10 border border-warning/20' 
+                : 'text-gray-700 dark:text-gray-300 hover:text-warning hover:bg-warning/5'
+            }`
+          }
+        >
+          Events
+        </NavLink>
+      </motion.li>
     </>
   );
 

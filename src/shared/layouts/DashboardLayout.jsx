@@ -1,6 +1,6 @@
 import React, { useContext } from 'react';
 import { Link, NavLink, Outlet, useNavigate } from 'react-router-dom';
-import { FaPlusCircle, FaTasks, FaUserCircle, FaHome, FaSignOutAlt, FaBlog } from 'react-icons/fa';
+import { FaPlusCircle, FaTasks, FaUserCircle, FaHome, FaSignOutAlt, FaBlog, FaCalendarAlt, FaCalendarCheck, FaChartBar } from 'react-icons/fa';
 import { AuthContext } from '../context/AuthProvider';
 
 const DashboardLayout = () => {
@@ -103,6 +103,57 @@ const DashboardLayout = () => {
           >
             <FaBlog />
             <span>Blog Management</span>
+          </NavLink>
+
+          {/* Event Management Section */}
+          <div className="border-t border-gray-200 dark:border-gray-700 my-4"></div>
+          <div className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2 px-4">
+            Event Management
+          </div>
+
+          {/* Events Dashboard */}
+          <NavLink
+            to="/dashboard/events"
+            className={({ isActive }) =>
+              `flex items-center gap-2 px-4 py-3 rounded-lg transition-colors ${
+                isActive
+                  ? 'bg-primary/10 text-primary border border-primary/20'
+                  : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+              }`
+            }
+          >
+            <FaCalendarAlt />
+            <span>Event Management</span>
+          </NavLink>
+
+          {/* My Events */}
+          <NavLink
+            to="/dashboard/my-events"
+            className={({ isActive }) =>
+              `flex items-center gap-2 px-4 py-3 rounded-lg transition-colors ${
+                isActive
+                  ? 'bg-success/10 text-success border border-success/20'
+                  : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+              }`
+            }
+          >
+            <FaCalendarCheck />
+            <span>My Events</span>
+          </NavLink>
+
+          {/* Event Analytics */}
+          <NavLink
+            to="/dashboard/events/analytics"
+            className={({ isActive }) =>
+              `flex items-center gap-2 px-4 py-3 rounded-lg transition-colors ${
+                isActive
+                  ? 'bg-info/10 text-info border border-info/20'
+                  : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+              }`
+            }
+          >
+            <FaChartBar />
+            <span>Event Analytics</span>
           </NavLink>
 
           {/* Admin section - REMOVED - All users have same access */}
