@@ -1,33 +1,27 @@
-import React, { useContext, useEffect, useState } from 'react';
+import React, { useContext, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import Swal from 'sweetalert2';
 import { AuthContext } from '../../shared/context/AuthProvider';
 import { LoadingSpinner } from '../../shared/components';
-import { useAxios, useAxiosSecure } from '../../shared/hooks';
+import { useAxios } from '../../shared/hooks';
+import { useVolunteerQueries } from './useVolunteerQueries';
+import { usePostQueries } from '../posts/usePostQueries';
 
 const BeVolunteer = () => {
   const { id } = useParams();
   const { user } = useContext(AuthContext);
   const navigate = useNavigate();
-  const [post, setPost] = useState(null);
-  const [loading, setLoading] = useState(true);
   const [suggestion, setSuggestion] = useState("");
-  const axiosPublic = useAxios();
-  const axiosSecure = useAxiosSecure();
-
-  useEffect(() => {
-    const fetchPost = async () => {
-      try {
-        const { data } = await axiosPublic.get(`/posts/${id}`);
-        setPost(data);
-      } catch (error) {
-        console.error("Error fetching post:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchPost();
-  }, [id, axiosPublic]);
+  
+  // Use the new query hooks
+  const { usePost } = usePostQueries();
+  const { useApplyForVolunteer, useDecreaseVolunteerCount } = useVolunteerQueries();
+  
+  // Fetch post data
+  const { data: post, isLoading: postLoading, error: postError } = usePost(id);
+  
+  // Mutation hooks
+  const applyForVolunteerMutation = useApplyForVolunteer();
+  const decreaseVolunteerCountMutation = useDecreaseVolunteerCount();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -46,27 +40,25 @@ const BeVolunteer = () => {
       volunteerName: user?.displayName,
       volunteerEmail: user?.email,
       suggestion,
-      status: "requested"
+      status: "pending"
     };
 
     try {
-      const { data: result } = await axiosSecure.post("/volunteer-requests", volunteerData);
-
-      if (result.insertedId || result.success) {
-        await axiosSecure.patch(`/posts/${post._id}/decrease-volunteers`);
-
-        Swal.fire("Success", "Volunteer request submitted", "success");
-        navigate("/dashboard/manage-posts");
-      } else {
-        Swal.fire("Failed", "Could not submit request", "error");
-      }
+      // Apply for volunteer opportunity
+      await applyForVolunteerMutation.mutateAsync(volunteerData);
+      
+      // Decrease volunteer count
+      await decreaseVolunteerCountMutation.mutateAsync(post._id);
+      
+      navigate("/dashboard/my-volunteer-requests");
     } catch (err) {
       console.error(err);
-      Swal.fire("Error", err.message, "error");
+      // Error handling is done in the mutation hooks
     }
   };
 
-  if (loading) return <LoadingSpinner />;
+  if (postLoading) return <LoadingSpinner />;
+  if (postError) return <p className="text-center text-red-500">Error loading post: {postError.message}</p>;
   if (!post) return <p className="text-center text-red-500">Post not found</p>;
 
   if (post.volunteersNeeded === 0) {
@@ -117,8 +109,19 @@ const BeVolunteer = () => {
         ></textarea>
 
         {/* Submit Button */}
-        <button type="submit" className="btn btn-primary w-full sm:col-span-2">
-          Request to Volunteer
+        <button 
+          type="submit" 
+          className="btn btn-primary w-full sm:col-span-2"
+          disabled={applyForVolunteerMutation.isPending || decreaseVolunteerCountMutation.isPending}
+        >
+          {applyForVolunteerMutation.isPending || decreaseVolunteerCountMutation.isPending ? (
+            <>
+              <span className="loading loading-spinner loading-sm"></span>
+              Submitting...
+            </>
+          ) : (
+            'Request to Volunteer'
+          )}
         </button>
       </form>
     </div>

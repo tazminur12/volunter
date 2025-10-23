@@ -1,5 +1,4 @@
-import { useEffect, useState } from 'react';
-import axios from 'axios';
+import { useState } from 'react';
 import { toast } from 'react-hot-toast';
 import {
   FaTrash,
@@ -13,48 +12,27 @@ import {
 } from 'react-icons/fa';
 import { motion } from 'framer-motion';
 import LoadingSpinner from '../../shared/components/LoadingSpinner';
+import { useVolunteerQueries } from './useVolunteerQueries';
 
 
 const MyVolunteerRequests = ({ user }) => {
-    const [requests, setRequests] = useState([]);
-    const [loading, setLoading] = useState(true);
-    const [cancellingId, setCancellingId] = useState(null);
     const [viewMode, setViewMode] = useState('table'); // 'table' or 'card'
-
-    useEffect(() => {
-        const fetchRequests = async () => {
-            try {
-                setLoading(true);
-                const res = await axios.get('http://localhost:3000/volunteer-requests', {
-                    params: { volunteerEmail: user.email },
-                    headers: {
-                        Authorization: `Bearer ${localStorage.getItem('token')}`
-                    }
-                });
-                setRequests(res.data || []);
-            } catch (err) {
-                toast.error(err.response?.data?.message || 'Failed to fetch your volunteer requests');
-            } finally {
-                setLoading(false);
-            }
-        };
-        if (user?.email) fetchRequests();
-    }, [user]);
+    
+    // Use the new query hooks
+    const { useUserVolunteerRequests, useCancelVolunteerRequest } = useVolunteerQueries();
+    
+    // Fetch user's volunteer requests
+    const { data: requests = [], isLoading: loading, error } = useUserVolunteerRequests(user?.email);
+    
+    // Cancel volunteer request mutation
+    const cancelRequestMutation = useCancelVolunteerRequest();
 
     const handleCancel = async (id) => {
         try {
-            setCancellingId(id);
-            await axios.delete(`http://localhost:3000/volunteer-requests/${id}`, {
-                headers: {
-                    Authorization: `Bearer ${localStorage.getItem('token')}`
-                }
-            });
-            setRequests(prev => prev.filter(req => req._id !== id));
+            await cancelRequestMutation.mutateAsync(id);
             toast.success('Volunteer request cancelled successfully');
         } catch (err) {
             toast.error(err.response?.data?.message || 'Failed to cancel request');
-        } finally {
-            setCancellingId(null);
         }
     };
 
@@ -117,15 +95,23 @@ const MyVolunteerRequests = ({ user }) => {
     };
 
     if (loading) return <LoadingSpinner fullPage />;
+    if (error) return <p className="text-center text-red-500">Error loading requests: {error.message}</p>;
 
     if (requests.length === 0) {
         return (
-            <EmptyState 
-                title="No Volunteer Requests"
-                description="You haven't signed up for any opportunities yet."
-                actionText="Browse Volunteer Posts"
-                actionLink="/all-posts"
-            />
+            <div className="min-h-screen flex items-center justify-center">
+                <div className="text-center">
+                    <div className="text-6xl mb-4">📝</div>
+                    <h3 className="text-2xl font-bold text-gray-800 mb-2">No Volunteer Requests</h3>
+                    <p className="text-gray-600 mb-6">You haven't signed up for any opportunities yet.</p>
+                    <a 
+                        href="/all-posts" 
+                        className="btn btn-primary"
+                    >
+                        Browse Volunteer Posts
+                    </a>
+                </div>
+            </div>
         );
     }
 
@@ -231,10 +217,10 @@ const MyVolunteerRequests = ({ user }) => {
                                         <td>
                                             <button
                                                 onClick={() => confirmCancel(req._id)}
-                                                disabled={cancellingId === req._id || req.status !== 'pending'}
+                                                disabled={cancelRequestMutation.isPending || req.status !== 'pending'}
                                                 className={`btn btn-sm ${req.status === 'pending' ? 'btn-error' : 'btn-disabled'}`}
                                             >
-                                                {cancellingId === req._id ? (
+                                                {cancelRequestMutation.isPending ? (
                                                     <span className="loading loading-spinner"></span>
                                                 ) : (
                                                     <>
@@ -290,10 +276,10 @@ const MyVolunteerRequests = ({ user }) => {
                                 <div className="card-actions justify-end">
                                     <button
                                         onClick={() => confirmCancel(req._id)}
-                                        disabled={cancellingId === req._id || req.status !== 'pending'}
+                                        disabled={cancelRequestMutation.isPending || req.status !== 'pending'}
                                         className={`btn btn-sm ${req.status === 'pending' ? 'btn-error' : 'btn-disabled'} w-full`}
                                     >
-                                        {cancellingId === req._id ? (
+                                        {cancelRequestMutation.isPending ? (
                                             <span className="loading loading-spinner"></span>
                                         ) : (
                                             <>
