@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import useAxios from '../../shared/hooks/useAxios';
 import useAxiosSecure from '../../shared/hooks/useAxiosSecure';
+import useAuth from '../../shared/hooks/useAuth';
 import Swal from 'sweetalert2';
 
 // Query Keys
@@ -19,6 +20,7 @@ export const useEventQueries = () => {
   const axiosPublic = useAxios();
   const axiosSecure = useAxiosSecure();
   const queryClient = useQueryClient();
+  const { user } = useAuth();
 
   // ==================== QUERIES ====================
 
@@ -27,8 +29,17 @@ export const useEventQueries = () => {
     return useQuery({
       queryKey: eventKeys.list(filters),
       queryFn: async () => {
-        const response = await axiosPublic.get('/events', { params: filters });
-        return response.data;
+        try {
+          const response = await axiosSecure.get('/events', { params: filters });
+          return response.data;
+        } catch (error) {
+          // If secure request fails, try public request as fallback
+          if (error.response?.status === 401 || error.response?.status === 403) {
+            const response = await axiosPublic.get('/events', { params: filters });
+            return response.data;
+          }
+          throw error;
+        }
       },
       staleTime: 5 * 60 * 1000, // 5 minutes
       gcTime: 10 * 60 * 1000, // 10 minutes
@@ -40,8 +51,17 @@ export const useEventQueries = () => {
     return useQuery({
       queryKey: eventKeys.detail(id),
       queryFn: async () => {
-        const response = await axiosPublic.get(`/events/${id}`);
-        return response.data;
+        try {
+          const response = await axiosSecure.get(`/events/${id}`);
+          return response.data;
+        } catch (error) {
+          // If secure request fails, try public request as fallback
+          if (error.response?.status === 401 || error.response?.status === 403) {
+            const response = await axiosPublic.get(`/events/${id}`);
+            return response.data;
+          }
+          throw error;
+        }
       },
       enabled: !!id,
       staleTime: 5 * 60 * 1000,
@@ -82,7 +102,12 @@ export const useEventQueries = () => {
   const useCreateEvent = () => {
     return useMutation({
       mutationFn: async (eventData) => {
-        const response = await axiosSecure.post('/events', eventData);
+        // Include the createdBy field with the current user's email
+        const eventDataWithCreator = {
+          ...eventData,
+          createdBy: user?.email
+        };
+        const response = await axiosSecure.post('/events', eventDataWithCreator);
         return response.data;
       },
       onSuccess: () => {
@@ -112,8 +137,11 @@ export const useEventQueries = () => {
   // Update existing event
   const useUpdateEvent = () => {
     return useMutation({
-      mutationFn: async ({ id, eventData }) => {
-        const response = await axiosSecure.put(`/events/${id}`, eventData);
+      mutationFn: async ({ id, eventData, createdBy }) => {
+        const response = await axiosSecure.put(`/events/${id}`, { 
+          ...eventData, 
+          createdBy: createdBy || user?.email
+        });
         return response.data;
       },
       onSuccess: (data, variables) => {
@@ -144,13 +172,15 @@ export const useEventQueries = () => {
   // Delete event
   const useDeleteEvent = () => {
     return useMutation({
-      mutationFn: async (id) => {
-        const response = await axiosSecure.delete(`/events/${id}`);
+      mutationFn: async ({ id, createdBy }) => {
+        const response = await axiosSecure.delete(`/events/${id}`, { 
+          data: { createdBy: createdBy || user?.email } 
+        });
         return response.data;
       },
-      onSuccess: (_, id) => {
+      onSuccess: (_, variables) => {
         // Remove from cache
-        queryClient.removeQueries({ queryKey: eventKeys.detail(id) });
+        queryClient.removeQueries({ queryKey: eventKeys.detail(variables.id) });
         // Invalidate related queries
         queryClient.invalidateQueries({ queryKey: eventKeys.lists() });
         queryClient.invalidateQueries({ queryKey: eventKeys.all });
@@ -176,13 +206,15 @@ export const useEventQueries = () => {
   // Join event
   const useJoinEvent = () => {
     return useMutation({
-      mutationFn: async (eventId) => {
-        const response = await axiosSecure.post(`/events/${eventId}/join`);
+      mutationFn: async ({ eventId, userEmail }) => {
+        const response = await axiosSecure.post(`/events/${eventId}/join`, { 
+          userEmail: userEmail || user?.email 
+        });
         return response.data;
       },
-      onSuccess: (data, eventId) => {
+      onSuccess: (data, variables) => {
         // Invalidate the specific event and events list
-        queryClient.invalidateQueries({ queryKey: eventKeys.detail(eventId) });
+        queryClient.invalidateQueries({ queryKey: eventKeys.detail(variables.eventId) });
         queryClient.invalidateQueries({ queryKey: eventKeys.lists() });
         queryClient.invalidateQueries({ queryKey: eventKeys.all });
         
@@ -207,8 +239,11 @@ export const useEventQueries = () => {
   // Check-in to event
   const useCheckInEvent = () => {
     return useMutation({
-      mutationFn: async ({ eventId, checkInCode }) => {
-        const response = await axiosSecure.post(`/events/${eventId}/checkin`, { checkInCode });
+      mutationFn: async ({ eventId, checkInCode, userEmail }) => {
+        const response = await axiosSecure.post(`/events/${eventId}/checkin`, { 
+          checkInCode, 
+          userEmail: userEmail || user?.email 
+        });
         return response.data;
       },
       onSuccess: (data, variables) => {

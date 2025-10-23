@@ -1,10 +1,11 @@
 import { createBrowserRouter } from "react-router-dom";
 import { MainLayout, DashboardLayout } from "../layouts";
-import { Home, About, Contact, ErrorPage } from "../pages";
+import { Home, About, Contact, ErrorPage, VolunteerAssistantPage } from "../pages";
 import { Login, Register, Profile } from "../../features/auth";
 import { AllPosts, AddPost, ManagePosts, PostDetails, UpdatePost } from "../../features/posts";
 import { BeVolunteer, MyVolunteerRequests } from "../../features/volunteers";
 import { Blog, BlogDetails, BlogManagement } from "../../features/blog";
+import { ImpactFeed } from "../../features/impact-feed";
 import { DashboardOverview } from "../../features/dashboard";
 import { 
   EventCalendar, 
@@ -33,8 +34,10 @@ const router = createBrowserRouter([
       { path: "events", element: <EventList /> },
       { path: "events/calendar", element: <EventCalendar /> },
       { path: "events/:id", element: <EventDetails /> },
+      { path: "impact-feed", element: <ImpactFeed /> },
       { path: "about", element: <About></About>},
       { path: "contact", element: <Contact></Contact>},
+      { path: "volunteer-assistant", element: <VolunteerAssistantPage /> },
       // ✅ Protected Routes (legacy direct paths)
       {
         path: "add-post",
@@ -143,6 +146,8 @@ const router = createBrowserRouter([
       { path: "my-events", element: <MyEvents /> },
       { path: "events/checkin/:id", element: <EventCheckIn /> },
       { path: "events/analytics", element: <EventAnalytics /> },
+      { path: "impact-feed", element: <ImpactFeed /> },
+      { path: "volunteer-assistant", element: <VolunteerAssistantPage /> },
       // Simplified dashboard - no role-based sections
     ],
   },

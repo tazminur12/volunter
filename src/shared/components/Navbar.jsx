@@ -3,7 +3,7 @@ import { useContext, useEffect, useRef, useState } from 'react';
 import { Link, NavLink } from 'react-router-dom';
 import { AuthContext } from '../context/AuthProvider';
 import { FaUserCircle, FaHandsHelping, FaChevronDown, FaSignOutAlt, FaUser, FaCog } from 'react-icons/fa';
-import { FiLogIn, FiUserPlus } from 'react-icons/fi';
+import { FiLogIn, FiUserPlus, FiHelpCircle } from 'react-icons/fi';
 import { MdOutlineLightMode, MdDarkMode } from 'react-icons/md';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -149,6 +149,21 @@ const Navbar = () => {
           Events
         </NavLink>
       </motion.li>
+      <motion.li variants={navLinkVariants}>
+        <NavLink 
+          to="/impact-feed" 
+          onClick={() => setMobileMenuOpen(false)}
+          className={({ isActive }) => 
+            `px-4 py-2 rounded-lg font-medium transition-all duration-300 ${
+              isActive 
+                ? 'text-pink-600 bg-pink-100 border border-pink-200 dark:bg-pink-900/20 dark:text-pink-400 dark:border-pink-800' 
+                : 'text-gray-700 dark:text-gray-300 hover:text-pink-600 hover:bg-pink-50 dark:hover:bg-pink-900/10'
+            }`
+          }
+        >
+          Impact Feed
+        </NavLink>
+      </motion.li>
     </>
   );
 
@@ -201,6 +216,21 @@ const Navbar = () => {
 
           {/* Right End Buttons */}
           <div className="flex items-center gap-3">
+            {/* AI Helper Button */}
+            <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+              <Link 
+                to="/volunteer-assistant"
+                className="relative group flex items-center gap-2 px-3 py-2 rounded-lg bg-gradient-to-r from-blue-500 to-purple-600 text-white hover:from-blue-600 hover:to-purple-700 transition-all duration-300 shadow-lg hover:shadow-xl"
+                title="AI Helper - Get Volunteer Advice"
+              >
+                <FiHelpCircle size={18} />
+                <span className="hidden lg:inline font-medium">AI Helper</span>
+                <span className="absolute -top-2 -right-2 bg-green-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center animate-pulse">
+                  AI
+                </span>
+              </Link>
+            </motion.div>
+            
             {/* Theme toggle */}
             <motion.button 
               whileHover={{ scale: 1.1, rotate: 180 }}
@@ -405,6 +435,19 @@ const Navbar = () => {
                       className="space-y-2"
                     >
                       {navLinks}
+                      
+                      {/* AI Helper Mobile Link */}
+                      <motion.li variants={navLinkVariants}>
+                        <Link 
+                          to="/volunteer-assistant" 
+                          onClick={() => setMobileMenuOpen(false)}
+                          className="flex items-center gap-2 px-4 py-3 rounded-lg bg-gradient-to-r from-blue-500 to-purple-600 text-white hover:from-blue-600 hover:to-purple-700 transition-all duration-300"
+                        >
+                          <FiHelpCircle />
+                          <span>AI Helper</span>
+                        </Link>
+                      </motion.li>
+                      
                       {user ? (
                         <>
                           <div className="border-t border-gray-200 dark:border-gray-700 my-2" />

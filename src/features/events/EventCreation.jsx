@@ -66,7 +66,8 @@ const EventCreation = () => {
     refreshments: false,
     certificate: false,
     reminderDays: 1,
-    reminderHours: 2
+    reminderHours: 2,
+    status: 'upcoming' // Add status field
   });
 
   const [errors, setErrors] = useState({});
