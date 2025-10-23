@@ -1,5 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
+import { useEventQueries } from './useEventQueries';
+import useAuth from '../../shared/hooks/useAuth';
 import { 
   FaCalendarAlt, 
   FaClock, 
@@ -92,8 +94,9 @@ import {
 import LoadingSpinner from '../../shared/components/LoadingSpinner';
 
 const MyEvents = () => {
-  const [events, setEvents] = useState([]);
-  const [loading, setLoading] = useState(false);
+  const { useUserEvents, useCheckInEvent } = useEventQueries();
+  const { user } = useAuth();
+  
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
   const [filterType, setFilterType] = useState('all');
@@ -104,125 +107,40 @@ const MyEvents = () => {
   const [eventsPerPage] = useState(12);
   const [selectedTab, setSelectedTab] = useState('registered'); // registered, created, past, upcoming
 
-  // Mock data - replace with actual API calls
-  const mockEvents = {
-    registered: [
-      {
-        id: 1,
-        title: 'Community Beach Cleanup Drive',
-        description: 'Join us for a comprehensive beach cleanup drive to protect our marine environment.',
-        date: '2024-12-15',
-        time: '08:00',
-        endTime: '12:00',
-        location: 'Cox\'s Bazar Beach',
-        type: 'environment',
-        status: 'upcoming',
-        registrationStatus: 'confirmed',
-        maxVolunteers: 100,
-        currentVolunteers: 67,
-        views: 1247,
-        likes: 89,
-        comments: 23,
-        rating: 4.8,
-        organizer: 'Green Earth Society',
-        image: 'https://images.unsplash.com/photo-1558618047-3c8c76ca7d13?ixlib=rb-4.0.3&auto=format&fit=crop&w=400&q=80',
-        tags: ['Environment', 'Beach Cleanup', 'Community'],
-        registeredAt: '2024-11-20T10:00:00Z',
-        checkInCode: 'BEACH2024',
-        reminderSent: true,
-        certificateEligible: true
-      },
-      {
-        id: 2,
-        title: 'Food Distribution Program',
-        description: 'Help distribute food to families in need.',
-        date: '2024-12-18',
-        time: '14:00',
-        endTime: '18:00',
-        location: 'Community Center',
-        type: 'social',
-        status: 'upcoming',
-        registrationStatus: 'confirmed',
-        maxVolunteers: 50,
-        currentVolunteers: 45,
-        views: 892,
-        likes: 67,
-        comments: 15,
-        rating: 4.6,
-        organizer: 'Helping Hands NGO',
-        image: 'https://images.unsplash.com/photo-1593113598332-cd288d649433?ixlib=rb-4.0.3&auto=format&fit=crop&w=400&q=80',
-        tags: ['Social Work', 'Food Distribution', 'Community'],
-        registeredAt: '2024-11-22T14:30:00Z',
-        checkInCode: 'FOOD2024',
-        reminderSent: false,
-        certificateEligible: true
-      }
-    ],
-    created: [
-      {
-        id: 3,
-        title: 'Educational Workshop',
-        description: 'Teach basic computer skills to underprivileged children.',
-        date: '2024-12-20',
-        time: '10:00',
-        endTime: '16:00',
-        location: 'Library Hall',
-        type: 'education',
-        status: 'upcoming',
-        registrationStatus: 'organizer',
-        maxVolunteers: 30,
-        currentVolunteers: 18,
-        views: 654,
-        likes: 45,
-        comments: 12,
-        rating: 4.9,
-        organizer: 'Digital Literacy Foundation',
-        image: 'https://images.unsplash.com/photo-1522202176988-66273c2fd55f?ixlib=rb-4.0.3&auto=format&fit=crop&w=400&q=80',
-        tags: ['Education', 'Digital Literacy', 'Children'],
-        createdAt: '2024-11-15T09:00:00Z',
-        checkInCode: 'EDU2024',
-        reminderSent: true,
-        certificateEligible: true
-      }
-    ],
-    past: [
-      {
-        id: 4,
-        title: 'Health Camp',
-        description: 'Provide free health checkups and medical assistance.',
-        date: '2024-11-10',
-        time: '09:00',
-        endTime: '17:00',
-        location: 'City Hospital',
-        type: 'health',
-        status: 'completed',
-        registrationStatus: 'attended',
-        maxVolunteers: 25,
-        currentVolunteers: 20,
-        views: 456,
-        likes: 32,
-        comments: 8,
-        rating: 4.7,
-        organizer: 'Health for All Foundation',
-        image: 'https://images.unsplash.com/photo-1576091160399-112ba8d25d1f?ixlib=rb-4.0.3&auto=format&fit=crop&w=400&q=80',
-        tags: ['Health', 'Medical', 'Community'],
-        registeredAt: '2024-10-25T11:15:00Z',
-        attendedAt: '2024-11-10T09:00:00Z',
-        hoursVolunteered: 8,
-        certificateIssued: true,
-        certificateUrl: '/certificates/health-camp-2024.pdf'
-      }
-    ]
+  // Use the useEventQueries hook for data fetching
+  const { data: registeredEvents, isLoading: registeredLoading, error: registeredError } = useUserEvents(user?.email, 'joined');
+  const { data: createdEvents, isLoading: createdLoading, error: createdError } = useUserEvents(user?.email, 'created');
+  const { data: allUserEvents, isLoading: allLoading, error: allError } = useUserEvents(user?.email, 'all');
+  
+  const checkInMutation = useCheckInEvent();
+  
+  // Determine which events to show based on selected tab
+  const getEventsForTab = () => {
+    switch (selectedTab) {
+      case 'registered':
+        return registeredEvents || [];
+      case 'created':
+        return createdEvents || [];
+      case 'past':
+        return (allUserEvents || []).filter(event => new Date(event.date) < new Date());
+      default:
+        return [];
+    }
   };
+  
+  const events = getEventsForTab();
+  const loading = selectedTab === 'registered' ? registeredLoading : 
+                  selectedTab === 'created' ? createdLoading : allLoading;
+  const error = selectedTab === 'registered' ? registeredError : 
+                selectedTab === 'created' ? createdError : allError;
 
-  useEffect(() => {
-    setLoading(true);
-    // Simulate API call
-    setTimeout(() => {
-      setEvents(mockEvents[selectedTab] || []);
-      setLoading(false);
-    }, 1000);
-  }, [selectedTab]);
+  // Handle check-in functionality
+  const handleCheckIn = (event) => {
+    const code = prompt(`Enter check-in code for ${event.title}:`);
+    if (code) {
+      checkInMutation.mutate({ eventId: event._id, checkInCode: code });
+    }
+  };
 
   const getEventTypeColor = (type) => {
     const colors = {
@@ -296,8 +214,10 @@ const MyEvents = () => {
 
   const handleCancelRegistration = (eventId) => {
     if (confirm('Are you sure you want to cancel your registration for this event?')) {
-      setEvents(prev => prev.filter(event => event.id !== eventId));
-      alert('Registration cancelled successfully.');
+      // TODO: Implement cancel registration API call
+      // For now, just show a message
+      console.log('Cancel registration for event:', eventId);
+      alert('Cancel registration functionality will be implemented with the API.');
     }
   };
 
@@ -310,14 +230,7 @@ const MyEvents = () => {
     }
   };
 
-  const handleCheckIn = (event) => {
-    const code = prompt(`Enter check-in code for ${event.title}:`);
-    if (code === event.checkInCode) {
-      alert('Check-in successful! Welcome to the event.');
-    } else {
-      alert('Invalid check-in code. Please try again.');
-    }
-  };
+  // Check-in functionality is now handled by the useEventQueries hook
 
   const filteredEvents = events.filter(event => {
     const matchesSearch = event.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -402,21 +315,21 @@ const MyEvents = () => {
                 className={`tab ${selectedTab === 'registered' ? 'tab-active' : ''}`}
               >
                 <FaUserCheck className="mr-2" />
-                Registered Events ({mockEvents.registered.length})
+                Registered Events ({registeredEvents?.length || 0})
               </button>
               <button
                 onClick={() => setSelectedTab('created')}
                 className={`tab ${selectedTab === 'created' ? 'tab-active' : ''}`}
               >
                 <FaCalendarPlus className="mr-2" />
-                Created Events ({mockEvents.created.length})
+                Created Events ({createdEvents?.length || 0})
               </button>
               <button
                 onClick={() => setSelectedTab('past')}
                 className={`tab ${selectedTab === 'past' ? 'tab-active' : ''}`}
               >
                 <FaCalendarTimes className="mr-2" />
-                Past Events ({mockEvents.past.length})
+                Past Events ({(allUserEvents || []).filter(event => new Date(event.date) < new Date()).length})
               </button>
             </div>
           </div>
@@ -524,8 +437,29 @@ const MyEvents = () => {
           </div>
         </div>
 
+        {/* Error State */}
+        {error && (
+          <div className="text-center py-16">
+            <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-12 max-w-md mx-auto">
+              <div className="text-6xl mb-4">⚠️</div>
+              <h3 className="text-xl font-bold text-gray-800 dark:text-white mb-2">
+                Error Loading Events
+              </h3>
+              <p className="text-gray-600 dark:text-gray-300 mb-6">
+                {error.message || 'Failed to load events. Please try again.'}
+              </p>
+              <button
+                onClick={() => window.location.reload()}
+                className="btn btn-primary"
+              >
+                Retry
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* Events Grid/List */}
-        {currentEvents.length === 0 ? (
+        {!error && currentEvents.length === 0 ? (
           <div className="text-center py-16">
             <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-12 max-w-md mx-auto">
               <div className="text-6xl mb-4">
@@ -550,7 +484,7 @@ const MyEvents = () => {
             {viewMode === 'grid' ? (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {currentEvents.map((event) => (
-                  <div key={event.id} className="group">
+                  <div key={event._id} className="group">
                     <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 overflow-hidden transform hover:-translate-y-2">
                       {/* Event Image */}
                       <div className="relative overflow-hidden">
@@ -715,7 +649,7 @@ const MyEvents = () => {
                             
                             {selectedTab === 'registered' && event.status === 'upcoming' && (
                               <button
-                                onClick={() => handleCancelRegistration(event.id)}
+                                onClick={() => handleCancelRegistration(event._id)}
                                 className="btn btn-ghost btn-xs text-error"
                                 title="Cancel Registration"
                               >
@@ -725,7 +659,7 @@ const MyEvents = () => {
                           </div>
                           
                           <Link
-                            to={`/events/${event.id}`}
+                            to={`/events/${event._id}`}
                             className="btn btn-primary btn-sm gap-2"
                           >
                             View Details
@@ -740,7 +674,7 @@ const MyEvents = () => {
             ) : (
               <div className="space-y-4">
                 {currentEvents.map((event) => (
-                  <div key={event.id} className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg hover:shadow-xl transition-shadow">
+                  <div key={event._id} className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg hover:shadow-xl transition-shadow">
                     <div className="p-6">
                       <div className="flex items-start gap-4">
                         {/* Event Image */}
@@ -839,7 +773,7 @@ const MyEvents = () => {
                             <div className="flex items-center gap-2">
                               {selectedTab === 'registered' && event.status === 'upcoming' && (
                                 <button
-                                  onClick={() => handleCancelRegistration(event.id)}
+                                  onClick={() => handleCancelRegistration(event._id)}
                                   className="btn btn-error btn-sm gap-2"
                                 >
                                   <FaUserTimes />
@@ -848,7 +782,7 @@ const MyEvents = () => {
                               )}
                               
                               <Link
-                                to={`/events/${event.id}`}
+                                to={`/events/${event._id}`}
                                 className="btn btn-primary btn-sm gap-2"
                               >
                                 View Details

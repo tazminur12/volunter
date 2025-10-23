@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { 
   FaCalendarAlt, 
   FaClock, 
@@ -17,66 +17,35 @@ import {
   FaInfoCircle
 } from 'react-icons/fa';
 import { Link } from 'react-router-dom';
+import { useEventQueries } from './useEventQueries';
 import LoadingSpinner from '../../shared/components/LoadingSpinner';
 
 const EventCalendar = () => {
+  const { useEvents } = useEventQueries();
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [viewMode, setViewMode] = useState('month'); // month, week, day
   const [filterType, setFilterType] = useState('all'); // all, my-events, upcoming, past
   const [searchTerm, setSearchTerm] = useState('');
-  const [events, setEvents] = useState([]);
-  const [loading, setLoading] = useState(false);
 
-  // Mock data - replace with actual API calls
-  const mockEvents = [
-    {
-      id: 1,
-      title: 'Community Cleanup Drive',
-      date: new Date(2024, 11, 15),
-      time: '09:00',
-      location: 'Central Park',
-      type: 'environment',
-      status: 'upcoming',
-      volunteers: 25,
-      maxVolunteers: 50,
-      description: 'Join us for a community cleanup drive to make our neighborhood cleaner.',
-      organizer: 'Green Earth Society',
-      image: 'https://images.unsplash.com/photo-1558618047-3c8c76ca7d13?ixlib=rb-4.0.3&auto=format&fit=crop&w=1000&q=80'
-    },
-    {
-      id: 2,
-      title: 'Food Distribution Program',
-      date: new Date(2024, 11, 18),
-      time: '14:00',
-      location: 'Community Center',
-      type: 'social',
-      status: 'upcoming',
-      volunteers: 15,
-      maxVolunteers: 30,
-      description: 'Help distribute food to families in need.',
-      organizer: 'Helping Hands NGO',
-      image: 'https://images.unsplash.com/photo-1593113598332-cd288d649433?ixlib=rb-4.0.3&auto=format&fit=crop&w=1000&q=80'
-    },
-    {
-      id: 3,
-      title: 'Educational Workshop',
-      date: new Date(2024, 11, 20),
-      time: '10:00',
-      location: 'Library Hall',
-      type: 'education',
-      status: 'upcoming',
-      volunteers: 8,
-      maxVolunteers: 20,
-      description: 'Teach basic computer skills to underprivileged children.',
-      organizer: 'Digital Literacy Foundation',
-      image: 'https://images.unsplash.com/photo-1522202176988-66273c2fd55f?ixlib=rb-4.0.3&auto=format&fit=crop&w=1000&q=80'
-    }
-  ];
+  // Use the useEventQueries hook for data fetching
+  const filters = {
+    search: searchTerm,
+    status: filterType === 'all' ? undefined : filterType,
+    sortBy: 'date',
+    sortOrder: 'asc'
+  };
+  
+  const { data: eventsData, isLoading: loading, error } = useEvents(filters);
+  const events = eventsData?.events || [];
 
-  useEffect(() => {
-    setEvents(mockEvents);
-  }, []);
+  // Convert API events to calendar format
+  const calendarEvents = events.map(event => ({
+    ...event,
+    date: new Date(event.date),
+    volunteers: event.currentVolunteers || 0,
+    maxVolunteers: event.maxVolunteers || 0
+  }));
 
   const getDaysInMonth = (date) => {
     const year = date.getFullYear();
@@ -97,7 +66,7 @@ const EventCalendar = () => {
     // Current month's days
     for (let day = 1; day <= daysInMonth; day++) {
       const currentDate = new Date(year, month, day);
-      const dayEvents = events.filter(event => 
+      const dayEvents = calendarEvents.filter(event => 
         event.date.toDateString() === currentDate.toDateString()
       );
       days.push({ 
@@ -151,10 +120,10 @@ const EventCalendar = () => {
     }
   };
 
-  const filteredEvents = events.filter(event => {
+  const filteredEvents = calendarEvents.filter(event => {
     const matchesSearch = event.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         event.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         event.organizer.toLowerCase().includes(searchTerm.toLowerCase());
+                         (event.description && event.description.toLowerCase().includes(searchTerm.toLowerCase())) ||
+                         (event.organizer && event.organizer.toLowerCase().includes(searchTerm.toLowerCase()));
     
     const matchesFilter = filterType === 'all' || 
                           (filterType === 'upcoming' && event.status === 'upcoming') ||
@@ -172,6 +141,32 @@ const EventCalendar = () => {
 
   if (loading) {
     return <LoadingSpinner />;
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 py-8">
+        <div className="max-w-7xl mx-auto px-4">
+          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-6">
+            <div className="text-center py-16">
+              <FaExclamationTriangle className="text-6xl text-red-500 mx-auto mb-4" />
+              <h3 className="text-xl font-bold text-gray-800 dark:text-white mb-2">
+                Error Loading Events
+              </h3>
+              <p className="text-gray-600 dark:text-gray-300 mb-6">
+                {error.message || 'Failed to load events. Please try again.'}
+              </p>
+              <button
+                onClick={() => window.location.reload()}
+                className="btn btn-primary"
+              >
+                Retry
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -393,7 +388,7 @@ const EventCalendar = () => {
                       </div>
                       <div className="flex gap-1">
                         <Link 
-                          to={`/events/${event.id}`}
+                          to={`/events/${event._id}`}
                           className="btn btn-ghost btn-xs"
                           title="View Details"
                         >

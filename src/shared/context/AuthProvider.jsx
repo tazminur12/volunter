@@ -36,7 +36,7 @@ const getStoredRole = () => {
     }
     
     return roleData;
-  } catch (error) {
+  } catch {
     return null;
   }
 };
@@ -45,7 +45,7 @@ const setStoredRole = (role) => {
   try {
     localStorage.setItem(ROLE_STORAGE_KEY, role);
     localStorage.setItem(ROLE_TIMESTAMP_KEY, Date.now().toString());
-  } catch (error) {
+  } catch {
     // Silently handle error
   }
 };
@@ -54,7 +54,7 @@ const clearStoredRole = () => {
   try {
     localStorage.removeItem(ROLE_STORAGE_KEY);
     localStorage.removeItem(ROLE_TIMESTAMP_KEY);
-  } catch (error) {
+  } catch {
     // Silently handle error
   }
 };
@@ -92,10 +92,10 @@ const AuthProvider = ({ children }) => {
   };
 
   // Fetch user role from server - DISABLED since endpoint doesn't exist
-  const fetchUserRole = async (userEmail, token) => {
-    // Return default role since backend endpoint doesn't exist
-    return 'volunteer';
-  };
+  // const fetchUserRole = async (userEmail, token) => {
+  //   // Return default role since backend endpoint doesn't exist
+  //   return 'volunteer';
+  // };
 
   // Manual role refresh function - DISABLED to prevent role changes
   // const refreshUserRole = async () => {
@@ -138,7 +138,7 @@ const AuthProvider = ({ children }) => {
             setStoredRole(defaultRole); // LOCK THIS ROLE FOREVER
             setRoleLoading(false);
           }
-        } catch (error) {
+        } catch {
           setRoleLoading(false);
         }
       } else {

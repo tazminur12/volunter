@@ -1,5 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
+import { useEventQueries } from './useEventQueries';
+import useAuth from '../../shared/hooks/useAuth';
 import { 
   FaCalendarAlt, 
   FaClock, 
@@ -56,76 +58,40 @@ import LoadingSpinner from '../../shared/components/LoadingSpinner';
 
 const EventDetails = () => {
   const { id } = useParams();
-  const [event, setEvent] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const { useEvent, useJoinEvent, useCheckInEvent } = useEventQueries();
+  const { user } = useAuth();
+  
   const [isLiked, setIsLiked] = useState(false);
   const [isBookmarked, setIsBookmarked] = useState(false);
-  const [isRegistered, setIsRegistered] = useState(false);
+  const [isRegistered] = useState(false);
   const [showQRCode, setShowQRCode] = useState(false);
   const [showShareMenu, setShowShareMenu] = useState(false);
   const [checkInCode, setCheckInCode] = useState('');
   const [showCheckIn, setShowCheckIn] = useState(false);
 
+  // Use the useEventQueries hook for data fetching
+  const { data: event, isLoading: loading, error } = useEvent(id);
+  const joinEventMutation = useJoinEvent();
+  const checkInMutation = useCheckInEvent();
+
   // Mock event data - replace with actual API call
-  const mockEvent = {
-    id: id,
-    title: 'Community Beach Cleanup Drive',
-    description: 'Join us for a comprehensive beach cleanup drive to protect our marine environment. We will be cleaning up plastic waste, organizing recyclable materials, and educating the community about environmental conservation. This event is suitable for all ages and skill levels. We will provide all necessary equipment including gloves, bags, and safety gear. Refreshments and certificates will be provided to all participants.',
-    date: '2024-12-15',
-    time: '08:00',
-    endTime: '12:00',
-    location: 'Cox\'s Bazar Beach',
-    address: 'Cox\'s Bazar, Chittagong Division, Bangladesh',
-    city: 'Cox\'s Bazar',
-    state: 'Chittagong',
-    zipCode: '4700',
-    country: 'Bangladesh',
-    type: 'environment',
-    category: 'Beach Cleanup',
-    maxVolunteers: 100,
-    currentVolunteers: 67,
-    requirements: 'Comfortable clothes, sunscreen, water bottle. We will provide gloves and safety equipment.',
-    contactEmail: 'info@greenearth.org',
-    contactPhone: '+880 1234 567890',
-    website: 'https://greenearth.org/beach-cleanup',
-    image: 'https://images.unsplash.com/photo-1558618047-3c8c76ca7d13?ixlib=rb-4.0.3&auto=format&fit=crop&w=1200&q=80',
-    tags: ['Environment', 'Beach Cleanup', 'Community', 'Plastic Free', 'Marine Conservation'],
-    isRecurring: false,
-    isPublic: true,
-    requiresApproval: false,
-    allowWaitlist: true,
-    weatherDependent: true,
-    ageRestriction: 'all',
-    skillLevel: 'beginner',
-    equipment: 'Gloves, bags, safety gear provided',
-    transportation: 'Carpool available from city center',
-    refreshments: true,
-    certificate: true,
-    organizer: 'Green Earth Society',
-    organizerImage: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?ixlib=rb-4.0.3&auto=format&fit=crop&w=100&q=80',
-    views: 1247,
-    likes: 89,
-    comments: 23,
-    rating: 4.8,
-    status: 'upcoming',
-    createdAt: '2024-11-20T10:00:00Z',
-    updatedAt: '2024-11-25T15:30:00Z',
-    checkInCode: 'BEACH2024',
-    weather: {
-      condition: 'sunny',
-      temperature: '28°C',
-      humidity: '65%',
-      windSpeed: '12 km/h'
+  // Handle join event
+  const handleJoinEvent = () => {
+    if (user) {
+      joinEventMutation.mutate(id);
+    } else {
+      alert('Please login to join this event');
     }
   };
 
-  useEffect(() => {
-    // Simulate API call
-    setTimeout(() => {
-      setEvent(mockEvent);
-      setLoading(false);
-    }, 1000);
-  }, [id]);
+  // Handle check-in
+  const handleCheckIn = () => {
+    if (checkInCode) {
+      checkInMutation.mutate({ eventId: id, checkInCode });
+    } else {
+      alert('Please enter a check-in code');
+    }
+  };
 
   const formatDate = (dateString) => {
     if (!dateString) return 'Unknown date';
@@ -199,13 +165,7 @@ const EventDetails = () => {
   };
 
   const handleRegister = () => {
-    if (isRegistered) {
-      if (confirm('Are you sure you want to cancel your registration?')) {
-        setIsRegistered(false);
-      }
-    } else {
-      setIsRegistered(true);
-    }
+    handleJoinEvent();
   };
 
   const handleShare = (platform) => {
@@ -245,29 +205,22 @@ const EventDetails = () => {
     setTimeout(() => setShowQRCode(false), 3000);
   };
 
-  const handleCheckIn = () => {
-    if (checkInCode === event.checkInCode) {
-      alert('Check-in successful! Welcome to the event.');
-      setShowCheckIn(false);
-    } else {
-      alert('Invalid check-in code. Please try again.');
-    }
-  };
+  // Check-in functionality is now handled by the useEventQueries hook
 
   if (loading) {
     return <LoadingSpinner />;
   }
 
-  if (!event) {
+  if (error) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 flex items-center justify-center">
-        <div className="text-center">
-          <div className="text-6xl mb-4">😕</div>
-          <h2 className="text-2xl font-bold text-gray-800 dark:text-white mb-4">
+        <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-12 max-w-md mx-auto text-center">
+          <div className="text-6xl mb-4">⚠️</div>
+          <h3 className="text-xl font-bold text-gray-800 dark:text-white mb-2">
             Event Not Found
-          </h2>
+          </h3>
           <p className="text-gray-600 dark:text-gray-300 mb-6">
-            The event you're looking for doesn't exist or has been removed.
+            {error.message || 'The event you are looking for does not exist or has been removed.'}
           </p>
           <Link to="/events" className="btn btn-primary">
             Back to Events
@@ -275,6 +228,10 @@ const EventDetails = () => {
         </div>
       </div>
     );
+  }
+
+  if (!event) {
+    return <LoadingSpinner />;
   }
 
   return (

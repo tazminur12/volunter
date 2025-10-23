@@ -2,6 +2,7 @@ import React from 'react';
 import Navbar from '../components/Navbar';
 import { Outlet } from 'react-router';
 import Footer from '../components/Footer';
+import { SimpleChat } from '../../features/chat';
 
 const MainLayout = () => {
   return (
@@ -14,6 +15,9 @@ const MainLayout = () => {
       </main>
 
       <Footer />
+      
+      {/* Live Chat Component */}
+      <SimpleChat />
     </div>
   );
 };

@@ -1,5 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
+import { useEventQueries } from './useEventQueries';
 import { 
   FaCalendarAlt, 
   FaClock, 
@@ -60,8 +61,8 @@ import {
 import LoadingSpinner from '../../shared/components/LoadingSpinner';
 
 const EventList = () => {
-  const [events, setEvents] = useState([]);
-  const [loading, setLoading] = useState(false);
+  const { useEvents } = useEventQueries();
+  
   const [searchTerm, setSearchTerm] = useState('');
   const [filterType, setFilterType] = useState('all');
   const [filterStatus, setFilterStatus] = useState('upcoming');
@@ -73,156 +74,22 @@ const EventList = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [eventsPerPage] = useState(12);
 
-  // Mock data - replace with actual API calls
-  const mockEvents = [
-    {
-      id: 1,
-      title: 'Community Beach Cleanup Drive',
-      description: 'Join us for a comprehensive beach cleanup drive to protect our marine environment. We will be cleaning up plastic waste, organizing recyclable materials, and educating the community about environmental conservation.',
-      date: '2024-12-15',
-      time: '08:00',
-      endTime: '12:00',
-      location: 'Cox\'s Bazar Beach',
-      address: 'Cox\'s Bazar, Chittagong Division, Bangladesh',
-      type: 'environment',
-      category: 'Beach Cleanup',
-      status: 'upcoming',
-      maxVolunteers: 100,
-      currentVolunteers: 67,
-      requirements: 'Comfortable clothes, sunscreen, water bottle',
-      ageRestriction: 'all',
-      skillLevel: 'beginner',
-      equipment: 'Gloves, bags, safety gear provided',
-      transportation: 'Carpool available from city center',
-      refreshments: true,
-      certificate: true,
-      views: 1247,
-      likes: 89,
-      comments: 23,
-      rating: 4.8,
-      organizer: 'Green Earth Society',
-      contactEmail: 'info@greenearth.org',
-      contactPhone: '+880 1234 567890',
-      website: 'https://greenearth.org/beach-cleanup',
-      image: 'https://images.unsplash.com/photo-1558618047-3c8c76ca7d13?ixlib=rb-4.0.3&auto=format&fit=crop&w=400&q=80',
-      tags: ['Environment', 'Beach Cleanup', 'Community', 'Plastic Free', 'Marine Conservation'],
-      weatherDependent: true,
-      weather: {
-        condition: 'sunny',
-        temperature: '28°C',
-        humidity: '65%',
-        windSpeed: '12 km/h'
-      }
-    },
-    {
-      id: 2,
-      title: 'Food Distribution Program',
-      description: 'Help distribute food to families in need. We will be organizing food packages and delivering them to underprivileged communities.',
-      date: '2024-12-18',
-      time: '14:00',
-      endTime: '18:00',
-      location: 'Community Center',
-      address: 'Dhaka, Bangladesh',
-      type: 'social',
-      category: 'Food Distribution',
-      status: 'upcoming',
-      maxVolunteers: 50,
-      currentVolunteers: 45,
-      requirements: 'Comfortable clothes, positive attitude',
-      ageRestriction: 'all',
-      skillLevel: 'beginner',
-      equipment: 'All materials provided',
-      transportation: 'Public transport available',
-      refreshments: true,
-      certificate: true,
-      views: 892,
-      likes: 67,
-      comments: 15,
-      rating: 4.6,
-      organizer: 'Helping Hands NGO',
-      contactEmail: 'contact@helpinghands.org',
-      contactPhone: '+880 9876 543210',
-      website: 'https://helpinghands.org',
-      image: 'https://images.unsplash.com/photo-1593113598332-cd288d649433?ixlib=rb-4.0.3&auto=format&fit=crop&w=400&q=80',
-      tags: ['Social Work', 'Food Distribution', 'Community', 'Helping', 'NGO'],
-      weatherDependent: false
-    },
-    {
-      id: 3,
-      title: 'Educational Workshop',
-      description: 'Teach basic computer skills to underprivileged children. Help them learn essential digital literacy skills for the modern world.',
-      date: '2024-12-20',
-      time: '10:00',
-      endTime: '16:00',
-      location: 'Library Hall',
-      address: 'Chittagong, Bangladesh',
-      type: 'education',
-      category: 'Digital Literacy',
-      status: 'upcoming',
-      maxVolunteers: 30,
-      currentVolunteers: 18,
-      requirements: 'Basic computer knowledge, patience',
-      ageRestriction: '18+',
-      skillLevel: 'intermediate',
-      equipment: 'Computers provided',
-      transportation: 'Metro available',
-      refreshments: true,
-      certificate: true,
-      views: 654,
-      likes: 45,
-      comments: 12,
-      rating: 4.9,
-      organizer: 'Digital Literacy Foundation',
-      contactEmail: 'info@digitalliteracy.org',
-      contactPhone: '+880 1122 334455',
-      website: 'https://digitalliteracy.org',
-      image: 'https://images.unsplash.com/photo-1522202176988-66273c2fd55f?ixlib=rb-4.0.3&auto=format&fit=crop&w=400&q=80',
-      tags: ['Education', 'Digital Literacy', 'Children', 'Technology', 'Learning'],
-      weatherDependent: false
-    },
-    {
-      id: 4,
-      title: 'Health Camp',
-      description: 'Provide free health checkups and medical assistance to underserved communities. Help make healthcare accessible to everyone.',
-      date: '2024-12-22',
-      time: '09:00',
-      endTime: '17:00',
-      location: 'City Hospital',
-      address: 'Sylhet, Bangladesh',
-      type: 'health',
-      category: 'Medical Camp',
-      status: 'upcoming',
-      maxVolunteers: 25,
-      currentVolunteers: 12,
-      requirements: 'Medical background preferred but not required',
-      ageRestriction: '18+',
-      skillLevel: 'advanced',
-      equipment: 'Medical equipment provided',
-      transportation: 'Hospital transport available',
-      refreshments: true,
-      certificate: true,
-      views: 456,
-      likes: 32,
-      comments: 8,
-      rating: 4.7,
-      organizer: 'Health for All Foundation',
-      contactEmail: 'info@healthforall.org',
-      contactPhone: '+880 5566 778899',
-      website: 'https://healthforall.org',
-      image: 'https://images.unsplash.com/photo-1576091160399-112ba8d25d1f?ixlib=rb-4.0.3&auto=format&fit=crop&w=400&q=80',
-      tags: ['Health', 'Medical', 'Community', 'Healthcare', 'Wellness'],
-      weatherDependent: false
-    }
-  ];
+  // Use the useEventQueries hook for data fetching
+  const filters = {
+    page: currentPage,
+    limit: eventsPerPage,
+    search: searchTerm,
+    category: filterType,
+    status: filterStatus,
+    sortBy,
+    sortOrder
+  };
+  
+  const { data: eventsData, isLoading: loading, error } = useEvents(filters);
+  
+  const events = eventsData?.events || [];
+  const totalPages = eventsData?.totalPages || 1;
 
-  useEffect(() => {
-    setLoading(true);
-    // Simulate API call
-    setTimeout(() => {
-      setEvents(mockEvents);
-      setLoading(false);
-    }, 1000);
-  }, []);
 
   const getEventTypeColor = (type) => {
     const colors = {
@@ -282,22 +149,6 @@ const EventList = () => {
     return `${displayHour}:${minutes} ${ampm}`;
   };
 
-  const getWeatherIcon = (condition) => {
-    const icons = {
-      sunny: <FaSun className="text-yellow-500" />,
-      cloudy: <FaUmbrella className="text-gray-500" />,
-      rainy: <FaUmbrella className="text-blue-500" />
-    };
-    return icons[condition] || icons.sunny;
-  };
-
-  const getTransportationIcon = (transport) => {
-    if (transport.toLowerCase().includes('car')) return <FaCar className="text-blue-500" />;
-    if (transport.toLowerCase().includes('bus')) return <FaBus className="text-green-500" />;
-    if (transport.toLowerCase().includes('metro') || transport.toLowerCase().includes('subway')) return <FaSubway className="text-purple-500" />;
-    return <FaWalking className="text-orange-500" />;
-  };
-
   const handleLike = (eventId) => {
     setLikedEvents(prev => {
       const newSet = new Set(prev);
@@ -323,11 +174,12 @@ const EventList = () => {
   };
 
   const handleShare = (event, platform) => {
-    const url = `${window.location.origin}/events/${event.id}`;
+    const url = `${window.location.origin}/events/${event._id}`;
     const title = event.title;
     const text = `Check out this volunteer event: ${title}`;
     
     let shareUrl = '';
+    
     switch (platform) {
       case 'facebook':
         shareUrl = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url)}`;
@@ -335,11 +187,11 @@ const EventList = () => {
       case 'twitter':
         shareUrl = `https://twitter.com/intent/tweet?url=${encodeURIComponent(url)}&text=${encodeURIComponent(text)}`;
         break;
-      case 'linkedin':
-        shareUrl = `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(url)}`;
-        break;
       case 'whatsapp':
         shareUrl = `https://wa.me/?text=${encodeURIComponent(text + ' ' + url)}`;
+        break;
+      case 'linkedin':
+        shareUrl = `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(url)}`;
         break;
       default:
         return;
@@ -349,51 +201,13 @@ const EventList = () => {
   };
 
   const copyToClipboard = (event) => {
-    const url = `${window.location.origin}/events/${event.id}`;
+    const url = `${window.location.origin}/events/${event._id}`;
     navigator.clipboard.writeText(url);
     alert('Event link copied to clipboard!');
   };
 
-  const filteredEvents = events.filter(event => {
-    const matchesSearch = event.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         event.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         event.location.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         event.organizer.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesType = filterType === 'all' || event.type === filterType;
-    const matchesStatus = filterStatus === 'all' || event.status === filterStatus;
-    return matchesSearch && matchesType && matchesStatus;
-  }).sort((a, b) => {
-    let comparison = 0;
-    switch (sortBy) {
-      case 'date':
-        comparison = new Date(a.date) - new Date(b.date);
-        break;
-      case 'title':
-        comparison = a.title.localeCompare(b.title);
-        break;
-      case 'volunteers':
-        comparison = a.currentVolunteers - b.currentVolunteers;
-        break;
-      case 'views':
-        comparison = a.views - b.views;
-        break;
-      case 'likes':
-        comparison = a.likes - b.likes;
-        break;
-      case 'rating':
-        comparison = a.rating - b.rating;
-        break;
-      default:
-        comparison = 0;
-    }
-    return sortOrder === 'desc' ? -comparison : comparison;
-  });
-
-  // Pagination
-  const indexOfLastEvent = currentPage * eventsPerPage;
-  const indexOfFirstEvent = indexOfLastEvent - eventsPerPage;
-  const currentEvents = filteredEvents.slice(indexOfFirstEvent, indexOfLastEvent);
-  const totalPages = Math.ceil(filteredEvents.length / eventsPerPage);
+  // Use events from API (filtering is handled by the API)
+  const currentEvents = events;
 
   const paginate = (pageNumber) => setCurrentPage(pageNumber);
 
@@ -413,7 +227,7 @@ const EventList = () => {
                 Volunteer Events
               </h1>
               <p className="text-gray-600 dark:text-gray-300">
-                Discover and join meaningful volunteer opportunities in your community
+                Discover meaningful volunteer opportunities in your community
               </p>
             </div>
             
@@ -423,14 +237,16 @@ const EventList = () => {
                 Create Event
               </Link>
               <button className="btn btn-outline gap-2">
-                <FaBell />
-                Notifications
+                <FaDownload />
+                Export Data
               </button>
             </div>
           </div>
+        </div>
 
-          {/* Search and Filters */}
-          <div className="mt-6 flex flex-col lg:flex-row gap-4">
+        {/* Search and Filters */}
+        <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-6 mb-8">
+          <div className="flex flex-col lg:flex-row gap-4 items-center">
             {/* Search */}
             <div className="relative flex-1">
               <FaSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
@@ -474,6 +290,7 @@ const EventList = () => {
                   <option value="upcoming">Upcoming</option>
                   <option value="ongoing">Ongoing</option>
                   <option value="completed">Completed</option>
+                  <option value="cancelled">Cancelled</option>
                 </select>
               </div>
               
@@ -529,8 +346,29 @@ const EventList = () => {
           </div>
         </div>
 
+        {/* Error State */}
+        {error && (
+          <div className="text-center py-16">
+            <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-12 max-w-md mx-auto">
+              <div className="text-6xl mb-4">⚠️</div>
+              <h3 className="text-xl font-bold text-gray-800 dark:text-white mb-2">
+                Error Loading Events
+              </h3>
+              <p className="text-gray-600 dark:text-gray-300 mb-6">
+                {error.message || 'Failed to load events. Please try again.'}
+              </p>
+              <button
+                onClick={() => window.location.reload()}
+                className="btn btn-primary"
+              >
+                Retry
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* Events Grid/List */}
-        {currentEvents.length === 0 ? (
+        {!error && currentEvents.length === 0 ? (
           <div className="text-center py-16">
             <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-12 max-w-md mx-auto">
               <div className="text-6xl mb-4">🔍</div>
@@ -557,7 +395,7 @@ const EventList = () => {
             {viewMode === 'grid' ? (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {currentEvents.map((event) => (
-                  <div key={event.id} className="group">
+                  <div key={event._id} className="group">
                     <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 overflow-hidden transform hover:-translate-y-2">
                       {/* Event Image */}
                       <div className="relative overflow-hidden">
@@ -577,7 +415,7 @@ const EventList = () => {
                         
                         {/* Status Badge */}
                         <div className="absolute top-3 right-3">
-                          <span className={`badge ${getStatusColor(event.status)}`}>
+                          <span className={`badge badge-sm ${getStatusColor(event.status)}`}>
                             {event.status}
                           </span>
                         </div>
@@ -585,16 +423,16 @@ const EventList = () => {
                         {/* Action Buttons */}
                         <div className="absolute bottom-3 right-3 flex gap-2">
                           <button
-                            onClick={() => handleLike(event.id)}
-                            className={`btn btn-circle btn-sm ${likedEvents.has(event.id) ? 'btn-primary' : 'btn-outline btn-primary text-white border-white hover:bg-white hover:text-primary'}`}
+                            onClick={() => handleLike(event._id)}
+                            className={`btn btn-circle btn-sm ${likedEvents.has(event._id) ? 'btn-primary' : 'btn-outline btn-primary text-white border-white hover:bg-white hover:text-primary'}`}
                           >
-                            {likedEvents.has(event.id) ? <FaHeart className="text-white" /> : <FaRegHeart />}
+                            {likedEvents.has(event._id) ? <FaHeart className="text-white" /> : <FaRegHeart />}
                           </button>
                           <button
-                            onClick={() => handleBookmark(event.id)}
-                            className={`btn btn-circle btn-sm ${bookmarkedEvents.has(event.id) ? 'btn-secondary' : 'btn-outline btn-primary text-white border-white hover:bg-white hover:text-primary'}`}
+                            onClick={() => handleBookmark(event._id)}
+                            className={`btn btn-circle btn-sm ${bookmarkedEvents.has(event._id) ? 'btn-secondary' : 'btn-outline btn-primary text-white border-white hover:bg-white hover:text-primary'}`}
                           >
-                            {bookmarkedEvents.has(event.id) ? <FaBookmark className="text-white" /> : <FaBookmarkOutline />}
+                            {bookmarkedEvents.has(event._id) ? <FaBookmark className="text-white" /> : <FaBookmarkOutline />}
                           </button>
                         </div>
                       </div>
@@ -603,11 +441,11 @@ const EventList = () => {
                       <div className="p-6">
                         <div className="flex items-center gap-2 mb-3">
                           <div className="w-8 h-8 rounded-full bg-gradient-to-br from-primary to-secondary flex items-center justify-center text-white font-bold">
-                            {event.organizer.charAt(0)}
+                            {event.organizer?.charAt(0) || 'O'}
                           </div>
                           <div>
                             <p className="text-sm font-medium text-gray-800 dark:text-white">
-                              {event.organizer}
+                              {event.organizer || 'Organizer'}
                             </p>
                             <p className="text-xs text-gray-600 dark:text-gray-300">
                               {formatDate(event.date)}
@@ -635,7 +473,7 @@ const EventList = () => {
                           </div>
                           <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
                             <FaUsers />
-                            <span>{event.currentVolunteers}/{event.maxVolunteers} volunteers</span>
+                            <span>{event.currentVolunteers || 0}/{event.maxVolunteers || 0} volunteers</span>
                           </div>
                         </div>
 
@@ -643,12 +481,12 @@ const EventList = () => {
                         <div className="mb-4">
                           <div className="flex justify-between text-sm text-gray-600 dark:text-gray-400 mb-1">
                             <span>Volunteers</span>
-                            <span>{Math.round((event.currentVolunteers / event.maxVolunteers) * 100)}%</span>
+                            <span>{Math.round(((event.currentVolunteers || 0) / (event.maxVolunteers || 1)) * 100)}%</span>
                           </div>
                           <div className="w-full bg-gray-200 rounded-full h-2">
                             <div 
                               className="bg-primary h-2 rounded-full transition-all duration-300" 
-                              style={{ width: `${(event.currentVolunteers / event.maxVolunteers) * 100}%` }}
+                              style={{ width: `${((event.currentVolunteers || 0) / (event.maxVolunteers || 1)) * 100}%` }}
                             ></div>
                           </div>
                         </div>
@@ -658,19 +496,19 @@ const EventList = () => {
                           <div className="flex items-center gap-3">
                             <div className="flex items-center gap-1">
                               <FaEye />
-                              <span>{event.views}</span>
+                              <span>{event.views || 0}</span>
                             </div>
                             <div className="flex items-center gap-1">
                               <FaHeart />
-                              <span>{event.likes}</span>
+                              <span>{event.likes || 0}</span>
                             </div>
                             <div className="flex items-center gap-1">
                               <FaComments />
-                              <span>{event.comments}</span>
+                              <span>{event.comments || 0}</span>
                             </div>
                             <div className="flex items-center gap-1">
                               <FaStar className="text-yellow-400" />
-                              <span>{event.rating}</span>
+                              <span>{event.rating || 0}</span>
                             </div>
                           </div>
                         </div>
@@ -690,34 +528,6 @@ const EventList = () => {
                             )}
                           </div>
                         )}
-
-                        {/* What's Included */}
-                        <div className="flex flex-wrap gap-2 mb-4">
-                          {event.equipment && (
-                            <div className="flex items-center gap-1 text-xs text-gray-600 dark:text-gray-400">
-                              <FaShieldAlt />
-                              <span>Equipment</span>
-                            </div>
-                          )}
-                          {event.transportation && (
-                            <div className="flex items-center gap-1 text-xs text-gray-600 dark:text-gray-400">
-                              {getTransportationIcon(event.transportation)}
-                              <span>Transport</span>
-                            </div>
-                          )}
-                          {event.refreshments && (
-                            <div className="flex items-center gap-1 text-xs text-gray-600 dark:text-gray-400">
-                              <FaCoffee />
-                              <span>Food</span>
-                            </div>
-                          )}
-                          {event.certificate && (
-                            <div className="flex items-center gap-1 text-xs text-gray-600 dark:text-gray-400">
-                              <FaCertificate />
-                              <span>Certificate</span>
-                            </div>
-                          )}
-                        </div>
 
                         {/* Action Buttons */}
                         <div className="flex items-center justify-between">
@@ -753,7 +563,7 @@ const EventList = () => {
                           </div>
                           
                           <Link
-                            to={`/events/${event.id}`}
+                            to={`/events/${event._id}`}
                             className="btn btn-primary btn-sm gap-2"
                           >
                             View Details
@@ -768,7 +578,7 @@ const EventList = () => {
             ) : (
               <div className="space-y-4">
                 {currentEvents.map((event) => (
-                  <div key={event.id} className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg hover:shadow-xl transition-shadow">
+                  <div key={event._id} className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg hover:shadow-xl transition-shadow">
                     <div className="p-6">
                       <div className="flex items-start gap-4">
                         {/* Event Image */}
@@ -797,16 +607,16 @@ const EventList = () => {
                             
                             <div className="flex items-center gap-2">
                               <button
-                                onClick={() => handleLike(event.id)}
-                                className={`btn btn-circle btn-sm ${likedEvents.has(event.id) ? 'btn-primary' : 'btn-outline'}`}
+                                onClick={() => handleLike(event._id)}
+                                className={`btn btn-circle btn-sm ${likedEvents.has(event._id) ? 'btn-primary' : 'btn-outline'}`}
                               >
-                                {likedEvents.has(event.id) ? <FaHeart /> : <FaRegHeart />}
+                                {likedEvents.has(event._id) ? <FaHeart /> : <FaRegHeart />}
                               </button>
                               <button
-                                onClick={() => handleBookmark(event.id)}
-                                className={`btn btn-circle btn-sm ${bookmarkedEvents.has(event.id) ? 'btn-secondary' : 'btn-outline'}`}
+                                onClick={() => handleBookmark(event._id)}
+                                className={`btn btn-circle btn-sm ${bookmarkedEvents.has(event._id) ? 'btn-secondary' : 'btn-outline'}`}
                               >
-                                {bookmarkedEvents.has(event.id) ? <FaBookmark /> : <FaBookmarkOutline />}
+                                {bookmarkedEvents.has(event._id) ? <FaBookmark /> : <FaBookmarkOutline />}
                               </button>
                             </div>
                           </div>
@@ -830,7 +640,7 @@ const EventList = () => {
                             </div>
                             <div className="flex items-center gap-1">
                               <FaUsers />
-                              <span>{event.currentVolunteers}/{event.maxVolunteers}</span>
+                              <span>{event.currentVolunteers || 0}/{event.maxVolunteers || 0}</span>
                             </div>
                           </div>
                           
@@ -838,24 +648,24 @@ const EventList = () => {
                             <div className="flex items-center gap-4 text-sm text-gray-500 dark:text-gray-400">
                               <div className="flex items-center gap-1">
                                 <FaEye />
-                                <span>{event.views}</span>
+                                <span>{event.views || 0}</span>
                               </div>
                               <div className="flex items-center gap-1">
                                 <FaHeart />
-                                <span>{event.likes}</span>
+                                <span>{event.likes || 0}</span>
                               </div>
                               <div className="flex items-center gap-1">
                                 <FaComments />
-                                <span>{event.comments}</span>
+                                <span>{event.comments || 0}</span>
                               </div>
                               <div className="flex items-center gap-1">
                                 <FaStar className="text-yellow-400" />
-                                <span>{event.rating}</span>
+                                <span>{event.rating || 0}</span>
                               </div>
                             </div>
                             
                             <Link
-                              to={`/events/${event.id}`}
+                              to={`/events/${event._id}`}
                               className="btn btn-primary btn-sm gap-2"
                             >
                               View Details

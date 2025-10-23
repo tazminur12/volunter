@@ -18,14 +18,19 @@ import {
   FaUpload,
   FaLink,
   FaCalendarCheck,
-  FaBell
+  FaBell,
+  FaSpinner,
+  FaCheckCircle
 } from 'react-icons/fa';
 import { useNavigate } from 'react-router-dom';
+import { useEventQueries } from './useEventQueries';
 import LoadingSpinner from '../../shared/components/LoadingSpinner';
+import Swal from 'sweetalert2';
 
 const EventCreation = () => {
   const navigate = useNavigate();
-  const [loading, setLoading] = useState(false);
+  const { useCreateEvent } = useEventQueries();
+  const createEventMutation = useCreateEvent();
   const [formData, setFormData] = useState({
     title: '',
     description: '',
@@ -66,7 +71,9 @@ const EventCreation = () => {
 
   const [errors, setErrors] = useState({});
   const [smartSuggestions, setSmartSuggestions] = useState([]);
-  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [imageLoading, setImageLoading] = useState(false);
+  const [imageUrl, setImageUrl] = useState('');
+  const [previewUrl, setPreviewUrl] = useState('');
 
   const eventTypes = [
     { value: 'environment', label: 'Environment', icon: '🌱', color: 'bg-green-100 text-green-800' },
@@ -97,7 +104,8 @@ const EventCreation = () => {
       const suggestions = generateSmartSuggestions(formData);
       setSmartSuggestions(suggestions);
     }
-  }, [formData.title, formData.type, formData.date]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [formData.title, formData.type, formData.date, formData.location, formData.maxVolunteers, formData.weatherDependent]);
 
   const generateSmartSuggestions = (data) => {
     const suggestions = [];
@@ -178,6 +186,69 @@ const EventCreation = () => {
     }));
   };
 
+  // Handle image upload to ImgBB
+  const handleImageUpload = async (file) => {
+    if (!file) return;
+
+    setImageLoading(true);
+    const formData = new FormData();
+    formData.append('image', file);
+
+    try {
+      // You can replace this with your actual ImgBB API key
+      const apiKey = import.meta.env.VITE_IMGBB_API_KEY;
+      
+      const response = await fetch(`https://api.imgbb.com/1/upload?key=${apiKey}`, {
+        method: 'POST',
+        body: formData
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        setImageUrl(data.data.url);
+        setPreviewUrl(data.data.url);
+        Swal.fire({
+          icon: 'success',
+          title: 'Image uploaded successfully!',
+          toast: true,
+          position: 'top-end',
+          showConfirmButton: false,
+          timer: 2000
+        });
+      } else {
+        throw new Error('Failed to upload image');
+      }
+    } catch (error) {
+      console.error('Image upload error:', error);
+      Swal.fire({
+        icon: 'error',
+        title: 'Image upload failed',
+        text: 'Please try again or use a direct image URL',
+        toast: true,
+        position: 'top-end',
+        showConfirmButton: false,
+        timer: 3000
+      });
+    } finally {
+      setImageLoading(false);
+    }
+  };
+
+  // Handle file selection
+  const handleFileChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      handleImageUpload(file);
+    }
+  };
+
+  // Handle direct URL input
+  const handleUrlChange = (e) => {
+    setImageUrl(e.target.value);
+    setPreviewUrl(e.target.value);
+  };
+
   const validateForm = () => {
     const newErrors = {};
     
@@ -222,25 +293,18 @@ const EventCreation = () => {
       return;
     }
     
-    setLoading(true);
+    // Include image URL in the form data
+    const eventData = {
+      ...formData,
+      image: imageUrl || formData.image
+    };
     
-    try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
-      // Here you would make the actual API call
-      console.log('Event data to be saved:', formData);
-      
-      // Show success message and redirect
-      alert('Event created successfully!');
-      navigate('/events');
-      
-    } catch (error) {
-      console.error('Error creating event:', error);
-      alert('Failed to create event. Please try again.');
-    } finally {
-      setLoading(false);
-    }
+    // Use the createEventMutation from useEventQueries
+    createEventMutation.mutate(eventData, {
+      onSuccess: () => {
+        navigate('/events');
+      }
+    });
   };
 
   const handleCancel = () => {
@@ -249,7 +313,7 @@ const EventCreation = () => {
     }
   };
 
-  if (loading) {
+  if (createEventMutation.isPending) {
     return <LoadingSpinner />;
   }
 
@@ -280,10 +344,10 @@ const EventCreation = () => {
               <button
                 onClick={handleSubmit}
                 className="btn btn-primary gap-2"
-                disabled={loading}
+                disabled={createEventMutation.isPending}
               >
                 <FaSave />
-                {loading ? 'Creating...' : 'Create Event'}
+                {createEventMutation.isPending ? 'Creating...' : 'Create Event'}
               </button>
             </div>
           </div>
@@ -405,6 +469,75 @@ const EventCreation = () => {
                   className="input input-bordered w-full focus:input-primary"
                   placeholder="e.g., Beach Cleanup, Food Drive..."
                 />
+              </div>
+            </div>
+          </div>
+
+          {/* Event Image */}
+          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-6">
+            <h2 className="text-xl font-bold text-gray-800 dark:text-white mb-6 flex items-center gap-2">
+              <FaImage className="text-primary" />
+              Event Image
+            </h2>
+            
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* Upload Section */}
+              <div className="space-y-4">
+                <div className="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-xl p-6 text-center hover:border-primary transition-colors">
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={handleFileChange}
+                    className="hidden"
+                    id="image-upload"
+                  />
+                  <label htmlFor="image-upload" className="cursor-pointer">
+                    <FaUpload className="text-4xl text-gray-400 mx-auto mb-4" />
+                    <p className="text-gray-600 dark:text-gray-300 mb-2">
+                      {imageLoading ? 'Uploading...' : 'Click to upload image'}
+                    </p>
+                    <p className="text-sm text-gray-500 dark:text-gray-400">
+                      PNG, JPG, GIF up to 10MB
+                    </p>
+                  </label>
+                </div>
+                
+                {imageLoading && (
+                  <div className="flex items-center justify-center gap-2 text-primary">
+                    <FaSpinner className="animate-spin" />
+                    <span>Uploading image...</span>
+                  </div>
+                )}
+              </div>
+
+              {/* Preview Section */}
+              <div className="space-y-4">
+                <div className="border-2 border-gray-200 dark:border-gray-700 rounded-xl p-4">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    Or enter image URL directly:
+                  </label>
+                  <input
+                    type="url"
+                    value={imageUrl}
+                    onChange={handleUrlChange}
+                    placeholder="https://example.com/image.jpg"
+                    className="input input-bordered w-full"
+                  />
+                </div>
+                
+                {previewUrl && (
+                  <div className="border-2 border-gray-200 dark:border-gray-700 rounded-xl p-4">
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                      Image Preview:
+                    </label>
+                    <img
+                      src={previewUrl}
+                      alt="Preview"
+                      className="w-full h-32 object-cover rounded-lg"
+                      onError={() => setPreviewUrl('')}
+                    />
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -998,9 +1131,9 @@ const EventCreation = () => {
             <button
               type="submit"
               className="btn btn-primary btn-lg gap-2"
-              disabled={loading}
+              disabled={createEventMutation.isPending}
             >
-              {loading ? (
+              {createEventMutation.isPending ? (
                 <>
                   <span className="loading loading-spinner loading-sm"></span>
                   Creating...

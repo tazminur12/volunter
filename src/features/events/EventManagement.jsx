@@ -66,11 +66,11 @@ import {
   FaDirections
 } from 'react-icons/fa';
 import { Link } from 'react-router-dom';
+import { useEventQueries } from './useEventQueries';
 import LoadingSpinner from '../../shared/components/LoadingSpinner';
 
 const EventManagement = () => {
-  const [events, setEvents] = useState([]);
-  const [loading, setLoading] = useState(false);
+  const { useEvents, useDeleteEvent, useUpdateEvent, useCreateEvent } = useEventQueries();
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
   const [sortBy, setSortBy] = useState('date');
@@ -86,91 +86,27 @@ const EventManagement = () => {
     totalLikes: 0
   });
 
-  // Mock data - replace with actual API calls
-  const mockEvents = [
-    {
-      id: 1,
-      title: 'Community Beach Cleanup Drive',
-      date: '2024-12-15',
-      time: '08:00',
-      endTime: '12:00',
-      location: 'Cox\'s Bazar Beach',
-      type: 'environment',
-      status: 'upcoming',
-      maxVolunteers: 100,
-      currentVolunteers: 67,
-      views: 1247,
-      likes: 89,
-      comments: 23,
-      rating: 4.8,
-      createdAt: '2024-11-20T10:00:00Z',
-      image: 'https://images.unsplash.com/photo-1558618047-3c8c76ca7d13?ixlib=rb-4.0.3&auto=format&fit=crop&w=300&q=80'
-    },
-    {
-      id: 2,
-      title: 'Food Distribution Program',
-      date: '2024-12-18',
-      time: '14:00',
-      endTime: '18:00',
-      location: 'Community Center',
-      type: 'social',
-      status: 'upcoming',
-      maxVolunteers: 50,
-      currentVolunteers: 45,
-      views: 892,
-      likes: 67,
-      comments: 15,
-      rating: 4.6,
-      createdAt: '2024-11-22T14:30:00Z',
-      image: 'https://images.unsplash.com/photo-1593113598332-cd288d649433?ixlib=rb-4.0.3&auto=format&fit=crop&w=300&q=80'
-    },
-    {
-      id: 3,
-      title: 'Educational Workshop',
-      date: '2024-11-25',
-      time: '10:00',
-      endTime: '16:00',
-      location: 'Library Hall',
-      type: 'education',
-      status: 'completed',
-      maxVolunteers: 30,
-      currentVolunteers: 28,
-      views: 654,
-      likes: 45,
-      comments: 12,
-      rating: 4.9,
-      createdAt: '2024-11-15T09:00:00Z',
-      image: 'https://images.unsplash.com/photo-1522202176988-66273c2fd55f?ixlib=rb-4.0.3&auto=format&fit=crop&w=300&q=80'
-    },
-    {
-      id: 4,
-      title: 'Health Camp',
-      date: '2024-12-20',
-      time: '09:00',
-      endTime: '17:00',
-      location: 'City Hospital',
-      type: 'health',
-      status: 'upcoming',
-      maxVolunteers: 25,
-      currentVolunteers: 18,
-      views: 456,
-      likes: 32,
-      comments: 8,
-      rating: 4.7,
-      createdAt: '2024-11-25T11:15:00Z',
-      image: 'https://images.unsplash.com/photo-1576091160399-112ba8d25d1f?ixlib=rb-4.0.3&auto=format&fit=crop&w=300&q=80'
-    }
-  ];
+  // Use the useEventQueries hook for data fetching
+  const filters = {
+    search: searchTerm,
+    status: filterStatus,
+    sortBy,
+    sortOrder
+  };
+  
+  const { data: eventsData, isLoading: loading, error } = useEvents(filters);
+  const deleteEventMutation = useDeleteEvent();
+  const updateEventMutation = useUpdateEvent();
+  const createEventMutation = useCreateEvent();
+  
+  const events = eventsData?.events || [];
 
+  // Calculate stats when events data changes
   useEffect(() => {
-    setLoading(true);
-    // Simulate API call
-    setTimeout(() => {
-      setEvents(mockEvents);
-      calculateStats(mockEvents);
-      setLoading(false);
-    }, 1000);
-  }, []);
+    if (events.length > 0) {
+      calculateStats(events);
+    }
+  }, [events]);
 
   const calculateStats = (eventsData) => {
     const newStats = {
@@ -292,24 +228,28 @@ const EventManagement = () => {
     switch (action) {
       case 'delete':
         if (confirm(`Are you sure you want to delete ${selectedEvents.length} events?`)) {
-          setEvents(prev => prev.filter(event => !selectedEvents.includes(event.id)));
+          selectedEvents.forEach(eventId => {
+            deleteEventMutation.mutate(eventId);
+          });
           setSelectedEvents([]);
         }
         break;
       case 'publish':
-        setEvents(prev => prev.map(event => 
-          selectedEvents.includes(event.id) 
-            ? { ...event, status: 'upcoming' }
-            : event
-        ));
+        selectedEvents.forEach(eventId => {
+          updateEventMutation.mutate({ 
+            id: eventId, 
+            eventData: { status: 'upcoming' } 
+          });
+        });
         setSelectedEvents([]);
         break;
       case 'cancel':
-        setEvents(prev => prev.map(event => 
-          selectedEvents.includes(event.id) 
-            ? { ...event, status: 'cancelled' }
-            : event
-        ));
+        selectedEvents.forEach(eventId => {
+          updateEventMutation.mutate({ 
+            id: eventId, 
+            eventData: { status: 'cancelled' } 
+          });
+        });
         setSelectedEvents([]);
         break;
       default:
@@ -319,14 +259,13 @@ const EventManagement = () => {
 
   const handleDeleteEvent = (eventId) => {
     if (confirm('Are you sure you want to delete this event?')) {
-      setEvents(prev => prev.filter(event => event.id !== eventId));
+      deleteEventMutation.mutate(eventId);
     }
   };
 
   const handleDuplicateEvent = (event) => {
-    const newEvent = {
+    const newEventData = {
       ...event,
-      id: Date.now(),
       title: `${event.title} (Copy)`,
       status: 'draft',
       currentVolunteers: 0,
@@ -335,7 +274,9 @@ const EventManagement = () => {
       comments: 0,
       createdAt: new Date().toISOString()
     };
-    setEvents(prev => [newEvent, ...prev]);
+    // Remove the _id field as it will be generated by the API
+    delete newEventData._id;
+    createEventMutation.mutate(newEventData);
   };
 
   if (loading) {
