@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { 
   FaArrowLeft, 
@@ -23,138 +23,34 @@ import {
   FaLinkedin,
   FaWhatsapp
 } from 'react-icons/fa';
-import useAxiosSecure from '../../shared/hooks/useAxiosSecure';
+import { useBlogQueries } from './useBlogQueries';
 import LoadingSpinner from '../../shared/components/LoadingSpinner';
 import RatingSystem from '../ratings/RatingSystem';
 
 const BlogDetails = () => {
   const { id } = useParams();
-  const axiosSecure = useAxiosSecure();
+  const { useBlogPost, useLikeBlogPost } = useBlogQueries();
   
-  const [article, setArticle] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
   const [isLiked, setIsLiked] = useState(false);
   const [isSaved, setIsSaved] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
 
-  // Fetch blog post by ID
-  const fetchBlogPost = async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      
-      // Try the main blog posts endpoint first
-      try {
-        const response = await axiosSecure.get(`/blog-posts/${id}`);
-        
-        if (response.data.success && response.data.blogPost) {
-          const post = response.data.blogPost;
-          // Fetch rating data for this post
-          try {
-            const ratingResponse = await axiosSecure.get(`/ratings/post/${post._id}`);
-            if (ratingResponse.data.success && ratingResponse.data.ratings.length > 0) {
-              const averageRating = ratingResponse.data.ratings.reduce((sum, r) => sum + r.rating, 0) / ratingResponse.data.ratings.length;
-              setArticle({ ...post, averageRating, ratingCount: ratingResponse.data.ratings.length });
-            } else {
-              setArticle({ ...post, averageRating: 0, ratingCount: 0 });
-            }
-          } catch {
-            setArticle({ ...post, averageRating: 0, ratingCount: 0 });
-          }
-          return;
-        } else if (response.data.blogPost) {
-          const post = response.data.blogPost;
-          // Fetch rating data for this post
-          try {
-            const ratingResponse = await axiosSecure.get(`/ratings/post/${post._id}`);
-            if (ratingResponse.data.success && ratingResponse.data.ratings.length > 0) {
-              const averageRating = ratingResponse.data.ratings.reduce((sum, r) => sum + r.rating, 0) / ratingResponse.data.ratings.length;
-              setArticle({ ...post, averageRating, ratingCount: ratingResponse.data.ratings.length });
-            } else {
-              setArticle({ ...post, averageRating: 0, ratingCount: 0 });
-            }
-          } catch {
-            setArticle({ ...post, averageRating: 0, ratingCount: 0 });
-          }
-          return;
-        } else if (response.data) {
-          // If the response is the blog post directly
-          const post = response.data;
-          // Fetch rating data for this post
-          try {
-            const ratingResponse = await axiosSecure.get(`/ratings/post/${post._id}`);
-            if (ratingResponse.data.success && ratingResponse.data.ratings.length > 0) {
-              const averageRating = ratingResponse.data.ratings.reduce((sum, r) => sum + r.rating, 0) / ratingResponse.data.ratings.length;
-              setArticle({ ...post, averageRating, ratingCount: ratingResponse.data.ratings.length });
-            } else {
-              setArticle({ ...post, averageRating: 0, ratingCount: 0 });
-            }
-          } catch {
-            setArticle({ ...post, averageRating: 0, ratingCount: 0 });
-          }
-          return;
-        }
-      } catch {
-        // Silently handle error
-      }
-      
-      // If main endpoint failed, try to find the post in user's blog posts
-      try {
-        const userResponse = await axiosSecure.get('/my-blog-posts');
-        
-        if (userResponse.data.blogPosts && userResponse.data.blogPosts.length > 0) {
-          const foundPost = userResponse.data.blogPosts.find(post => post._id === id);
-          
-          if (foundPost) {
-            // Fetch rating data for this post
-            try {
-              const ratingResponse = await axiosSecure.get(`/ratings/post/${foundPost._id}`);
-              if (ratingResponse.data.success && ratingResponse.data.ratings.length > 0) {
-                const averageRating = ratingResponse.data.ratings.reduce((sum, r) => sum + r.rating, 0) / ratingResponse.data.ratings.length;
-                setArticle({ ...foundPost, averageRating, ratingCount: ratingResponse.data.ratings.length });
-              } else {
-                setArticle({ ...foundPost, averageRating: 0, ratingCount: 0 });
-              }
-            } catch {
-              setArticle({ ...foundPost, averageRating: 0, ratingCount: 0 });
-            }
-            return;
-          }
-        }
-      } catch {
-        // Silently handle error
-      }
-      
-      // If we reach here, the post was not found
-      setError('Blog post not found');
-      
-    } catch (error) {
-      if (error.response?.status === 404) {
-        setError('Blog post not found');
-      } else if (error.code === 'ERR_NETWORK') {
-        setError('Cannot connect to backend server. Please check if your backend is running.');
-      } else {
-        setError('Failed to load blog post. Please try again later.');
-      }
-    } finally {
-      setLoading(false);
-    }
-  };
+  // Use React Query hooks
+  const { data: article, isLoading: loading, error, refetch } = useBlogPost(id);
+  const likeMutation = useLikeBlogPost();
 
-
-
-  useEffect(() => {
-    if (id) {
-      fetchBlogPost();
-    } else {
-      setError('No blog post ID provided');
-      setLoading(false);
-    }
-  }, [id]);
+  // Remove manual fetch since we're using React Query
 
   const handleLike = () => {
-    setIsLiked(!isLiked);
+    const action = isLiked ? 'unlike' : 'like';
+    likeMutation.mutate(
+      { postId: id, action },
+      {
+        onSuccess: () => {
+          setIsLiked(!isLiked);
+        }
+      }
+    );
   };
 
   const handleSave = () => {
@@ -191,19 +87,18 @@ const BlogDetails = () => {
             Article Not Found
           </h3>
           <p className="text-gray-600 dark:text-gray-300 mb-6">
-            {error || 'The article you\'re looking for doesn\'t exist or has been removed.'}
+            {error?.message || 'The article you\'re looking for doesn\'t exist or has been removed.'}
           </p>
           <div className="flex flex-col sm:flex-row gap-3 justify-center">
             <Link to="/blog" className="btn btn-primary">
               Back to Blog
             </Link>
             <button 
-              onClick={() => fetchBlogPost()} 
+              onClick={() => refetch()} 
               className="btn btn-outline"
             >
               Try Again
             </button>
-
           </div>
         </div>
       </div>
@@ -382,7 +277,7 @@ const BlogDetails = () => {
             postId={article._id} 
             onRatingUpdate={() => {
               // Refresh the article data to show updated ratings
-              fetchBlogPost();
+              refetch();
             }}
           />
         </div>

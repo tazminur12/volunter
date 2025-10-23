@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useContext } from 'react';
+import React, { useState, useContext } from 'react';
 import { 
   FaPlus, 
   FaEdit, 
@@ -20,16 +20,21 @@ import {
   FaStar
 } from 'react-icons/fa';
 import { AuthContext } from '../../shared/context/AuthProvider';
-import useAxiosSecure from '../../shared/hooks/useAxiosSecure';
+import { useBlogQueries } from './useBlogQueries';
 import LoadingSpinner from '../../shared/components/LoadingSpinner';
 import AdminRatingManagement from '../ratings/AdminRatingManagement';
 
 const BlogManagement = () => {
   const { user } = useContext(AuthContext);
-  const axiosSecure = useAxiosSecure();
+  const { 
+    useUserBlogPosts, 
+    useCreateBlogPost, 
+    useUpdateBlogPost, 
+    useDeleteBlogPost, 
+    useLikeBlogPost,
+    uploadImageToImgBB 
+  } = useBlogQueries();
   
-  const [blogPosts, setBlogPosts] = useState([]);
-  const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedTag, setSelectedTag] = useState('all');
   const [sortBy, setSortBy] = useState('latest');
@@ -37,6 +42,16 @@ const BlogManagement = () => {
   const [editingPost, setEditingPost] = useState(null);
   const [deletingPost, setDeletingPost] = useState(null);
   const [successMessage, setSuccessMessage] = useState('');
+
+  // Use React Query hooks
+  const { data: userBlogData, isLoading: loading } = useUserBlogPosts();
+  const createMutation = useCreateBlogPost();
+  const updateMutation = useUpdateBlogPost();
+  const deleteMutation = useDeleteBlogPost();
+  const likeMutation = useLikeBlogPost();
+
+  // Get blog posts from React Query data
+  const blogPosts = userBlogData?.blogPosts || [];
 
   // Form states
   const [formData, setFormData] = useState({
@@ -54,22 +69,7 @@ const BlogManagement = () => {
   const [imageError, setImageError] = useState('');
   const [activeTab, setActiveTab] = useState('posts');
 
-  // Fetch user's blog posts
-  const fetchBlogPosts = async () => {
-    try {
-      setLoading(true);
-      const response = await axiosSecure.get('/my-blog-posts');
-      setBlogPosts(response.data.blogPosts || []);
-    } catch {
-      // Silently handle error
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchBlogPosts();
-  }, []);
+  // Remove manual fetch since we're using React Query
 
   // Handle form input changes
   const handleInputChange = (e) => {
@@ -116,35 +116,14 @@ const BlogManagement = () => {
     setFormData(prev => ({ ...prev, image: '' }));
   };
 
-  // Upload image to ImgBB
+  // Upload image using the utility function from useBlogQueries
   const uploadImage = async (file) => {
     try {
       setUploadingImage(true);
       setImageError('');
-      
-      // Check if ImgBB API key is available
-      const apiKey = import.meta.env.VITE_IMGBB_API_KEY;
-      if (!apiKey) {
-        throw new Error('ImgBB API key not configured. Please add VITE_IMGBB_API_KEY to your environment variables.');
-      }
-      
-      const formData = new FormData();
-      formData.append('image', file);
-      
-      const response = await fetch(`https://api.imgbb.com/1/upload?key=${apiKey}`, {
-        method: 'POST',
-        body: formData
-      });
-
-      const data = await response.json();
-
-      if (data.success) {
-        return data.data.url;
-      } else {
-        throw new Error('Failed to upload image to ImgBB');
-      }
+      const imageUrl = await uploadImageToImgBB(file);
+      return imageUrl;
     } catch (error) {
-      console.error('Error uploading image:', error);
       setImageError(error.message || 'Failed to upload image. Please try again.');
       throw error;
     } finally {
@@ -164,34 +143,33 @@ const BlogManagement = () => {
         imageUrl = await uploadImage(selectedImage);
       }
       
-      // If no image was uploaded and no URL provided, imageUrl will be empty
+      const postData = {
+        ...formData,
+        image: imageUrl,
+        author: user.email,
+        tags: formData.tags.split(',').map(tag => tag.trim()).filter(tag => tag)
+      };
       
       if (editingPost) {
         // Update existing post
-        await axiosSecure.put(`/blog-posts/${editingPost._id}`, {
-          ...formData,
-          image: imageUrl
-        });
-        setSuccessMessage('Blog post updated successfully!');
+        updateMutation.mutate(
+          { id: editingPost._id, postData },
+          {
+            onSuccess: () => {
+              setSuccessMessage('Blog post updated successfully!');
+              resetForm();
+            }
+          }
+        );
       } else {
         // Create new post
-        await axiosSecure.post('/blog-posts', {
-          ...formData,
-          image: imageUrl,
-          author: user.email,
-          tags: formData.tags.split(',').map(tag => tag.trim()).filter(tag => tag)
+        createMutation.mutate(postData, {
+          onSuccess: () => {
+            setSuccessMessage('Blog post created successfully!');
+            resetForm();
+          }
         });
-        
-        setSuccessMessage('Blog post created successfully!');
       }
-      
-      // Reset form and refresh posts
-      setFormData({ title: '', content: '', image: '', tags: '', excerpt: '' });
-      setSelectedImage(null);
-      setImagePreview('');
-      setShowAddForm(false);
-      setEditingPost(null);
-      fetchBlogPosts();
       
       // Clear success message after 3 seconds
       setTimeout(() => setSuccessMessage(''), 3000);
@@ -199,6 +177,15 @@ const BlogManagement = () => {
       console.error('Error saving blog post:', error);
       alert('Failed to save blog post. Please try again.');
     }
+  };
+
+  // Reset form helper
+  const resetForm = () => {
+    setFormData({ title: '', content: '', image: '', tags: '', excerpt: '' });
+    setSelectedImage(null);
+    setImagePreview('');
+    setShowAddForm(false);
+    setEditingPost(null);
   };
 
   // Handle edit post
@@ -228,30 +215,27 @@ const BlogManagement = () => {
   // Handle delete post
   const handleDelete = async (postId) => {
     if (window.confirm('Are you sure you want to delete this blog post?')) {
-      try {
-        setDeletingPost(postId);
-        await axiosSecure.delete(`/blog-posts/${postId}`);
-        setSuccessMessage('Blog post deleted successfully!');
-        fetchBlogPosts();
-        setTimeout(() => setSuccessMessage(''), 3000);
-      } catch (error) {
-        console.error('Error deleting blog post:', error);
-        alert('Failed to delete blog post. Please try again.');
-      } finally {
-        setDeletingPost(null);
-      }
+      setDeletingPost(postId);
+      deleteMutation.mutate(postId, {
+        onSuccess: () => {
+          setSuccessMessage('Blog post deleted successfully!');
+          setTimeout(() => setSuccessMessage(''), 3000);
+        },
+        onError: (error) => {
+          console.error('Error deleting blog post:', error);
+          alert('Failed to delete blog post. Please try again.');
+        },
+        onSettled: () => {
+          setDeletingPost(null);
+        }
+      });
     }
   };
 
   // Handle like/unlike
   const handleLike = async (postId, currentLikes, isLiked) => {
-    try {
-      const action = isLiked ? 'unlike' : 'like';
-      await axiosSecure.patch(`/blog-posts/${postId}/like`, { action });
-      fetchBlogPosts(); // Refresh to get updated like count
-    } catch (error) {
-      console.error('Error updating like:', error);
-    }
+    const action = isLiked ? 'unlike' : 'like';
+    likeMutation.mutate({ postId, action });
   };
 
   // Filter and sort posts

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { 
   FaSearch, 
@@ -22,100 +22,26 @@ import {
   FaClock,
   FaComments
 } from 'react-icons/fa';
-import useAxiosSecure from '../../shared/hooks/useAxiosSecure';
+import { useBlogQueries } from './useBlogQueries';
 import LoadingSpinner from '../../shared/components/LoadingSpinner';
 import RatingSystem from '../ratings/RatingSystem';
 
 const Blog = () => {
-  const axiosSecure = useAxiosSecure();
+  const { useBlogPosts, useLikeBlogPost } = useBlogQueries();
   
-  const [articles, setArticles] = useState([]);
-  const [filteredArticles, setFilteredArticles] = useState([]);
-  const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [sortBy, setSortBy] = useState('latest');
   const [likedArticles, setLikedArticles] = useState(new Set());
   const [savedArticles, setSavedArticles] = useState(new Set());
-  const [error, setError] = useState('');
 
-  // Fetch blog posts from backend only
-  const fetchBlogPosts = async () => {
-    try {
-      setLoading(true);
-      setError('');
-      
-      // Strategy: Try to get posts from both endpoints and merge them
-      let allPosts = [];
-      let hasPosts = false;
-      
-      // Try the main blog posts endpoint first
-      try {
-        const response = await axiosSecure.get('/blog-posts');
-        
-        if (response.data.success && response.data.blogPosts) {
-          allPosts = [...allPosts, ...response.data.blogPosts];
-          hasPosts = true;
-        } else if (response.data.blogPosts) {
-          allPosts = [...allPosts, ...response.data.blogPosts];
-          hasPosts = true;
-        }
-              } catch {
-          // Silently handle error
-        }
-      
-      // Try the user's blog posts endpoint
-      try {
-        const userResponse = await axiosSecure.get('/my-blog-posts');
-        
-        if (userResponse.data.blogPosts && userResponse.data.blogPosts.length > 0) {
-          // Merge posts, avoiding duplicates by ID
-          const existingIds = new Set(allPosts.map(post => post._id));
-          const newPosts = userResponse.data.blogPosts.filter(post => !existingIds.has(post._id));
-          
-          if (newPosts.length > 0) {
-            allPosts = [...allPosts, ...newPosts];
-          }
-          
-          hasPosts = true;
-        }
-              } catch {
-          // Silently handle error
-        }
-      
-      if (hasPosts && allPosts.length > 0) {
-        // Fetch ratings for each post to calculate average ratings
-        const postsWithRatings = await Promise.all(
-          allPosts.map(async (post) => {
-            try {
-              const ratingResponse = await axiosSecure.get(`/ratings/post/${post._id}`);
-              if (ratingResponse.data.success && ratingResponse.data.ratings.length > 0) {
-                const averageRating = ratingResponse.data.ratings.reduce((sum, r) => sum + r.rating, 0) / ratingResponse.data.ratings.length;
-                return { ...post, averageRating, ratingCount: ratingResponse.data.ratings.length };
-              }
-              return { ...post, averageRating: 0, ratingCount: 0 };
-            } catch {
-              return { ...post, averageRating: 0, ratingCount: 0 };
-            }
-          })
-        );
-        
-        setArticles(postsWithRatings);
-        setFilteredArticles(postsWithRatings);
-      } else {
-        setError('No blog posts found');
-        setArticles([]);
-        setFilteredArticles([]);
-      }
-      
-    } catch (error) {
-      setError(`Failed to load blog posts: ${error.message}`);
-      setArticles([]);
-      setFilteredArticles([]);
-    } finally {
-      setLoading(false);
-    }
-  };
+  // Use React Query hooks
+  const { data: blogData, isLoading: loading, error, refetch } = useBlogPosts();
+  const likeMutation = useLikeBlogPost();
+
+  // Get articles from React Query data
+  const articles = useMemo(() => blogData?.blogPosts || [], [blogData?.blogPosts]);
+  const [filteredArticles, setFilteredArticles] = useState([]);
 
   // Get unique categories from tags
   const getCategories = () => {
@@ -132,15 +58,7 @@ const Blog = () => {
 
   const categories = getCategories();
 
-  useEffect(() => {
-    fetchBlogPosts();
-  }, []);
-
-  useEffect(() => {
-    filterArticles();
-  }, [searchTerm, selectedCategory, sortBy, articles]);
-
-  const filterArticles = () => {
+  const filterArticles = useCallback(() => {
     let filtered = articles.filter(article => {
       const matchesSearch = article.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
                            (article.excerpt && article.excerpt.toLowerCase().includes(searchTerm.toLowerCase())) ||
@@ -166,18 +84,32 @@ const Blog = () => {
     }
 
     setFilteredArticles(filtered);
-  };
+  }, [searchTerm, selectedCategory, sortBy, articles]);
+
+  useEffect(() => {
+    filterArticles();
+  }, [filterArticles]);
 
   const handleLike = (articleId) => {
-    setLikedArticles(prev => {
-      const newSet = new Set(prev);
-      if (newSet.has(articleId)) {
-        newSet.delete(articleId);
-      } else {
-        newSet.add(articleId);
+    const isLiked = likedArticles.has(articleId);
+    const action = isLiked ? 'unlike' : 'like';
+    
+    likeMutation.mutate(
+      { postId: articleId, action },
+      {
+        onSuccess: () => {
+          setLikedArticles(prev => {
+            const newSet = new Set(prev);
+            if (isLiked) {
+              newSet.delete(articleId);
+            } else {
+              newSet.add(articleId);
+            }
+            return newSet;
+          });
+        }
       }
-      return newSet;
-    });
+    );
   };
 
   const handleSave = (articleId) => {
@@ -211,16 +143,15 @@ const Blog = () => {
         <div className="text-center">
           <div className="text-6xl mb-4">⚠️</div>
           <h2 className="text-2xl font-bold text-gray-800 dark:text-white mb-4">
-            {error}
+            {error.message || 'Failed to load blog posts'}
           </h2>
           <div className="space-y-3">
             <button
-              onClick={fetchBlogPosts}
+              onClick={() => refetch()}
               className="btn btn-primary"
             >
               Try Again
             </button>
-
           </div>
         </div>
       </div>
@@ -239,7 +170,7 @@ const Blog = () => {
             There are no blog posts to display at the moment.
           </p>
           <button
-            onClick={fetchBlogPosts}
+            onClick={() => refetch()}
             className="btn btn-primary"
           >
             Refresh
@@ -333,7 +264,7 @@ const Blog = () => {
               
               {/* Refresh Button */}
               <button
-                onClick={fetchBlogPosts}
+                onClick={() => refetch()}
                 className="btn btn-primary btn-outline"
                 title="Refresh blog posts"
               >
