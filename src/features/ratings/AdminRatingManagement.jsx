@@ -1,74 +1,27 @@
 import React, { useState, useEffect } from 'react';
 import { FaStar, FaEdit, FaTrash, FaEye, FaCalendarAlt, FaUser, FaSearch, FaFilter } from 'react-icons/fa';
-import useAxiosSecure from '../../shared/hooks/useAxiosSecure';
 import LoadingSpinner from '../../shared/components/LoadingSpinner';
+import { useRatingQueries } from './useRatingQueries';
 
 const AdminRatingManagement = () => {
-  const axiosSecure = useAxiosSecure();
+  const {
+    useAllRatings,
+    useAdminDeleteRating,
+    calculateAverageRating,
+    getRatingDistribution
+  } = useRatingQueries();
   
-  const [allRatings, setAllRatings] = useState([]);
-  const [filteredRatings, setFilteredRatings] = useState([]);
-  const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterRating, setFilterRating] = useState('all');
   const [sortBy, setSortBy] = useState('latest');
 
-  // Fetch all ratings (admin only)
-  const fetchAllRatings = async () => {
-    try {
-      setLoading(true);
-      // This would be an admin endpoint to get all ratings
-      const response = await axiosSecure.get('/admin/ratings');
-      if (response.data.success) {
-        setAllRatings(response.data.ratings);
-        setFilteredRatings(response.data.ratings);
-      }
-    } catch (error) {
-      console.error('Error fetching all ratings:', error);
-      // Fallback: try to get ratings from individual posts
-      await fetchRatingsFromPosts();
-    } finally {
-      setLoading(false);
-    }
-  };
+  // Use React Query hooks
+  const { data: ratingsData, isLoading: loading } = useAllRatings();
+  const deleteRatingMutation = useAdminDeleteRating();
 
-  // Fallback method to get ratings from individual posts
-  const fetchRatingsFromPosts = async () => {
-    try {
-      // Get all blog posts first
-      const postsResponse = await axiosSecure.get('/blog-posts');
-      if (postsResponse.data.success && postsResponse.data.blogPosts) {
-        const allRatings = [];
-        
-        // Get ratings for each post
-        for (const post of postsResponse.data.blogPosts) {
-          try {
-            const ratingResponse = await axiosSecure.get(`/ratings/post/${post._id}`);
-            if (ratingResponse.data.success && ratingResponse.data.ratings.length > 0) {
-              // Add post title to each rating
-              const ratingsWithPostInfo = ratingResponse.data.ratings.map(rating => ({
-                ...rating,
-                postTitle: post.title,
-                postId: post._id
-              }));
-              allRatings.push(...ratingsWithPostInfo);
-            }
-          } catch (error) {
-            console.error(`Error fetching ratings for post ${post._id}:`, error);
-          }
-        }
-        
-        setAllRatings(allRatings);
-        setFilteredRatings(allRatings);
-      }
-    } catch (error) {
-      console.error('Error fetching posts for ratings:', error);
-    }
-  };
-
-  useEffect(() => {
-    fetchAllRatings();
-  }, []);
+  // Extract data from API response
+  const allRatings = ratingsData?.ratings || [];
+  const [filteredRatings, setFilteredRatings] = useState([]);
 
   useEffect(() => {
     filterAndSortRatings();
@@ -107,20 +60,10 @@ const AdminRatingManagement = () => {
     setFilteredRatings(filtered);
   };
 
-  const handleDelete = async (ratingId) => {
+  const handleDelete = (ratingId) => {
     if (!confirm('Are you sure you want to delete this rating? This action cannot be undone.')) return;
     
-    try {
-      const response = await axiosSecure.delete(`/ratings/${ratingId}`);
-      if (response.data.success) {
-        setAllRatings(prev => prev.filter(r => r._id !== ratingId));
-        // Show success message
-        alert('Rating deleted successfully');
-      }
-    } catch (error) {
-      console.error('Error deleting rating:', error);
-      alert('Failed to delete rating');
-    }
+    deleteRatingMutation.mutate(ratingId);
   };
 
   const renderStars = (rating) => {
@@ -141,9 +84,10 @@ const AdminRatingManagement = () => {
 
   const getRatingStats = () => {
     const total = allRatings.length;
-    const average = total > 0 ? (allRatings.reduce((sum, r) => sum + r.rating, 0) / total).toFixed(1) : 0;
-    const fiveStar = allRatings.filter(r => r.rating === 5).length;
-    const oneStar = allRatings.filter(r => r.rating === 1).length;
+    const average = calculateAverageRating(allRatings).toFixed(1);
+    const distribution = getRatingDistribution(allRatings);
+    const fiveStar = distribution[5];
+    const oneStar = distribution[1];
     
     return { total, average, fiveStar, oneStar };
   };

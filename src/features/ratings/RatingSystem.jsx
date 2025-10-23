@@ -1,146 +1,91 @@
 import React, { useState, useEffect } from 'react';
 import { FaStar, FaEdit, FaTrash, FaUser, FaCalendarAlt } from 'react-icons/fa';
-import useAxiosSecure from '../../shared/hooks/useAxiosSecure';
 import useAuth from '../../shared/hooks/useAuth';
+import { useRatingQueries } from './useRatingQueries';
 
 const RatingSystem = ({ postId, onRatingUpdate }) => {
-  const axiosSecure = useAxiosSecure();
   const { user } = useAuth();
+  const {
+    usePostRatings,
+    useCreateRating,
+    useUpdateRating,
+    useDeleteRating,
+    calculateAverageRating,
+    hasUserRated,
+    getUserRating
+  } = useRatingQueries();
   
-  const [ratings, setRatings] = useState([]);
-  const [userRating, setUserRating] = useState(null);
   const [showForm, setShowForm] = useState(false);
   const [formData, setFormData] = useState({
     rating: 5,
     review: ''
   });
-  const [loading, setLoading] = useState(false);
   const [editingRating, setEditingRating] = useState(null);
 
-  // Fetch ratings for this post
-  const fetchRatings = async () => {
-    try {
-      const response = await axiosSecure.get(`/ratings/post/${postId}`);
-      if (response.data.ratings) {
-        setRatings(response.data.ratings);
-        
-        // Check if current user has already rated
-        const userRating = response.data.ratings.find(r => r.reviewerEmail === user?.email);
-        if (userRating) {
-          setUserRating(userRating);
-          setFormData({
-            rating: userRating.rating,
-            review: userRating.review
-          });
-        }
-      }
-    } catch (error) {
-      console.error('Error fetching ratings:', error);
-    }
-  };
+  // Use React Query hooks
+  const { data: ratingsData } = usePostRatings(postId);
+  const createRatingMutation = useCreateRating();
+  const updateRatingMutation = useUpdateRating();
+  const deleteRatingMutation = useDeleteRating();
 
-  // Fetch user's ratings
-  const fetchUserRatings = async () => {
-    if (!user) return;
-    
-    try {
-      const response = await axiosSecure.get('/my-ratings');
-      if (response.data.ratings) {
-        const userRating = response.data.ratings.find(r => r.postId === postId);
-        if (userRating) {
-          setUserRating(userRating);
-          setFormData({
-            rating: userRating.rating,
-            review: userRating.review
-          });
-        }
-      }
-    } catch (error) {
-      console.error('Error fetching user ratings:', error);
-    }
-  };
+  // Extract data from API response
+  const ratings = ratingsData?.ratings || [];
+  const userRating = getUserRating(ratings, user?.email);
 
+  // Update form data when user rating changes
   useEffect(() => {
-    fetchRatings();
-    fetchUserRatings();
-  }, [postId, user]);
+    if (userRating) {
+      setFormData({
+        rating: userRating.rating,
+        review: userRating.review
+      });
+    } else {
+      setFormData({ rating: 5, review: '' });
+    }
+  }, [userRating]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!user) return;
 
-    setLoading(true);
-    try {
-      if (editingRating) {
-        // Update existing rating
-        const response = await axiosSecure.put(`/ratings/${editingRating._id}`, {
-          rating: formData.rating,
-          review: formData.review,
-          category: 'general'
-        });
-        
-        if (response.data.updatedRating) {
-          setRatings(prev => prev.map(r => 
-            r._id === editingRating._id 
-              ? { ...r, rating: formData.rating, review: formData.review }
-              : r
-          ));
-          setUserRating(response.data.updatedRating);
-          setEditingRating(null);
+    const ratingData = {
+      postId,
+      rating: formData.rating,
+      review: formData.review,
+      category: 'general'
+    };
+
+    if (editingRating) {
+      // Update existing rating
+      updateRatingMutation.mutate(
+        { id: editingRating._id, ratingData },
+        {
+          onSuccess: () => {
+            setEditingRating(null);
+            setShowForm(false);
+            onRatingUpdate && onRatingUpdate();
+          }
+        }
+      );
+    } else {
+      // Create new rating
+      createRatingMutation.mutate(ratingData, {
+        onSuccess: () => {
           setShowForm(false);
           onRatingUpdate && onRatingUpdate();
         }
-      } else {
-        // Create new rating
-        console.log('Sending rating data:', {
-          postId,
-          rating: formData.rating,
-          review: formData.review,
-          category: 'general'
-        });
-        
-        const response = await axiosSecure.post('/ratings', {
-          postId,
-          rating: formData.rating,
-          review: formData.review,
-          category: 'general'
-        });
-        
-        console.log('Rating response:', response.data);
-        
-        if (response.data.rating) {
-          setRatings(prev => [response.data.rating, ...prev]);
-          setUserRating(response.data.rating);
-          setShowForm(false);
-          onRatingUpdate && onRatingUpdate();
-        }
-      }
-    } catch (error) {
-      console.error('Error saving rating:', error);
-      console.error('Error response:', error.response?.data);
-      console.error('User:', user);
-      console.error('PostId:', postId);
-    } finally {
-      setLoading(false);
+      });
     }
   };
 
-  const handleDelete = async (ratingId) => {
+  const handleDelete = (ratingId) => {
     if (!confirm('Are you sure you want to delete this rating?')) return;
     
-    try {
-      const response = await axiosSecure.delete(`/ratings/${ratingId}`);
-      if (response.data.message) {
-        setRatings(prev => prev.filter(r => r._id !== ratingId));
-        if (userRating?._id === ratingId) {
-          setUserRating(null);
-          setFormData({ rating: 5, review: '' });
-        }
+    deleteRatingMutation.mutate(ratingId, {
+      onSuccess: () => {
         onRatingUpdate && onRatingUpdate();
       }
-    } catch (error) {
-      console.error('Error deleting rating:', error);
-    }
+    });
   };
 
   const handleEdit = (rating) => {
@@ -165,9 +110,8 @@ const RatingSystem = ({ postId, onRatingUpdate }) => {
     }
   };
 
-  const averageRating = ratings.length > 0 
-    ? ratings.reduce((sum, r) => sum + r.rating, 0) / ratings.length 
-    : 0;
+  const averageRating = calculateAverageRating(ratings);
+  const loading = createRatingMutation.isPending || updateRatingMutation.isPending || deleteRatingMutation.isPending;
 
   const renderStars = (rating, interactive = false, onChange = null) => {
     return (
@@ -210,7 +154,7 @@ const RatingSystem = ({ postId, onRatingUpdate }) => {
           </div>
         </div>
         
-        {user && !userRating && (
+        {user && !hasUserRated(ratings, user?.email) && (
           <button
             onClick={() => setShowForm(true)}
             className="btn btn-primary"
@@ -372,7 +316,7 @@ const RatingSystem = ({ postId, onRatingUpdate }) => {
       )}
 
       {/* No Ratings Message */}
-      {ratings.length === 0 && !userRating && (
+      {ratings.length === 0 && !hasUserRated(ratings, user?.email) && (
         <div className="text-center py-8">
           <div className="text-4xl mb-3">⭐</div>
           <p className="text-gray-600 dark:text-gray-400 mb-4">

@@ -1,15 +1,17 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { FaStar, FaEdit, FaTrash, FaEye, FaCalendarAlt, FaUser } from 'react-icons/fa';
-import useAxiosSecure from '../../shared/hooks/useAxiosSecure';
 import useAuth from '../../shared/hooks/useAuth';
 import LoadingSpinner from '../../shared/components/LoadingSpinner';
+import { useRatingQueries } from './useRatingQueries';
 
 const RatingManagement = () => {
-  const axiosSecure = useAxiosSecure();
   const { user } = useAuth();
+  const {
+    useUserRatings,
+    useUpdateRating,
+    useDeleteRating
+  } = useRatingQueries();
   
-  const [ratings, setRatings] = useState([]);
-  const [loading, setLoading] = useState(true);
   const [editingRating, setEditingRating] = useState(null);
   const [formData, setFormData] = useState({
     rating: 5,
@@ -17,24 +19,14 @@ const RatingManagement = () => {
   });
   const [showEditForm, setShowEditForm] = useState(false);
 
-  // Fetch user's ratings
-  const fetchUserRatings = async () => {
-    try {
-      setLoading(true);
-      const response = await axiosSecure.get('/my-ratings');
-      if (response.data.success) {
-        setRatings(response.data.ratings);
-      }
-    } catch (error) {
-      console.error('Error fetching user ratings:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
+  // Use React Query hooks
+  const { data: ratingsData, isLoading: loading } = useUserRatings(user?.email);
+  const updateRatingMutation = useUpdateRating();
+  const deleteRatingMutation = useDeleteRating();
 
-  useEffect(() => {
-    fetchUserRatings();
-  }, []);
+  // Extract data from API response
+  const ratings = ratingsData?.ratings || [];
+
 
   const handleEdit = (rating) => {
     setEditingRating(rating);
@@ -45,42 +37,31 @@ const RatingManagement = () => {
     setShowEditForm(true);
   };
 
-  const handleUpdate = async (e) => {
+  const handleUpdate = (e) => {
     e.preventDefault();
     if (!editingRating) return;
 
-    try {
-      const response = await axiosSecure.put(`/ratings/${editingRating._id}`, {
-        rating: formData.rating,
-        review: formData.review
-      });
-      
-      if (response.data.success) {
-        setRatings(prev => prev.map(r => 
-          r._id === editingRating._id 
-            ? { ...r, rating: formData.rating, review: formData.review }
-            : r
-        ));
-        setEditingRating(null);
-        setShowEditForm(false);
-        setFormData({ rating: 5, review: '' });
+    const ratingData = {
+      rating: formData.rating,
+      review: formData.review
+    };
+
+    updateRatingMutation.mutate(
+      { id: editingRating._id, ratingData },
+      {
+        onSuccess: () => {
+          setEditingRating(null);
+          setShowEditForm(false);
+          setFormData({ rating: 5, review: '' });
+        }
       }
-    } catch (error) {
-      console.error('Error updating rating:', error);
-    }
+    );
   };
 
-  const handleDelete = async (ratingId) => {
+  const handleDelete = (ratingId) => {
     if (!confirm('Are you sure you want to delete this rating?')) return;
     
-    try {
-      const response = await axiosSecure.delete(`/ratings/${ratingId}`);
-      if (response.data.success) {
-        setRatings(prev => prev.filter(r => r._id !== ratingId));
-      }
-    } catch (error) {
-      console.error('Error deleting rating:', error);
-    }
+    deleteRatingMutation.mutate(ratingId);
   };
 
   const cancelEdit = () => {

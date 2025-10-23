@@ -183,7 +183,7 @@ export const usePostQueries = () => {
         const response = await axiosSecure.post('/volunteer-requests', applicationData);
         return response.data;
       },
-      onSuccess: (data, variables) => {
+      onSuccess: () => {
         // Invalidate volunteer requests
         queryClient.invalidateQueries({ queryKey: postKeys.volunteerRequests() });
         
